@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICEGATE EGM Portal</title>
+  
+  <!-- Manifest for Direct Windows Installation (PWA) -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+
+  <!-- Fonts & PDF Libraries -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --secondary: #64748b;
+      --secondary-hover: #475569;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --cloud: #0891b2;
+      --cloud-hover: #0e7490;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface-subtle: #f8fafc;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --radius: 8px;
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: var(--bg); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px 16px; }
+
+    .login-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 400px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .portal-container {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 1200px;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header-bar {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(147, 197, 253, 0.3);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+    .status-existing { background: #dbeafe; color: #1e40af; }
+    .status-new { background: #dcfce7; color: #166534; }
+
+    .form-layout { padding: 20px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; }
+    .section-card { background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .section-heading { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--secondary); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 3px; }
+    .form-group.full-width { grid-column: span 2; }
+
+    label { font-size: 11px; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text-main); background: #ffffff; outline: none; text-transform: uppercase; transition: border-color 0.15s; }
+    input:read-only { background: #e2e8f0 !important; color: #475569 !important; cursor: not-allowed; border-color: #cbd5e1; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 40px; }
+
+    .actions-bar { background: var(--surface-subtle); border-top: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s ease; }
+    .btn-default { background: #ffffff; border-color: var(--border); color: var(--text-main); }
+    .btn-default:hover { background: #f8fafc; }
+    .btn-secondary { background: var(--secondary); color: #fff; }
+    .btn-secondary:hover { background: var(--secondary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--success-hover); }
+    .btn-cloud { background: var(--cloud); color: #fff; }
+    .btn-cloud:hover { background: var(--cloud-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-primary { background: var(--primary); color: #fff; }
+
+    .master-list-section { padding: 0 24px 24px 24px; display: flex; flex-direction: column; gap: 10px; }
+    .table-wrapper { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #ffffff; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+    th { background: #f8fafc; color: var(--text-muted); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+    tr:hover td { background: #f1f5f9; }
+    .table-btn { padding: 3px 8px; font-size: 11px; margin-right: 4px; }
+
+    .notification { position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #ffffff; padding: 12px 18px; border-radius: 6px; font-size: 13px; box-shadow: var(--shadow-lg); transform: translateY(100px); opacity: 0; transition: all 0.25s ease; z-index: 2000; }
+    .notification.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. LOGIN / AUTHENTICATION INTERFACE -->
+  <div class="login-container" id="loginScreen">
+    <div style="text-align: center;">
+      <h2 style="font-size: 18px; font-weight: 700;">Customs EGM System</h2>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access secure EGM generator</p>
+    </div>
+    <form id="loginForm" style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-group">
+        <label>Operator / User ID</label>
+        <input type="text" id="username" placeholder="E.G. ADMIN" value="ADMIN" required />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" value="admin123" style="text-transform: none;" required />
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top: 6px; height: 36px;">Login to Portal</button>
+      <div style="font-size: 11px; text-align: center; color: var(--text-muted);">Default: ADMIN / admin123</div>
+    </form>
+  </div>
+
+  <!-- 2. MAIN APPLICATION -->
+  <div class="portal-container" id="portalScreen">
+    <div class="header-bar">
+      <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+        <span id="portalTitle">Entry (Multiple Shipping Mode)</span>
+        <span class="badge" id="userBadge">User: —</span>
+      </div>
+      <div style="display:flex; gap: 8px;">
+        <button type="button" class="btn btn-default" id="btnInstallApp" style="display:none; padding: 4px 8px; font-size: 11px;">⬇ Install App</button>
+        <button type="button" class="btn btn-default" id="btnLogout" style="padding: 4px 8px; font-size: 11px;">Logout</button>
+      </div>
+    </div>
+
+    <form id="egmForm">
+      <div class="form-layout">
+        
+        <!-- Left Side -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="section-card">
+            <div class="section-heading">Customs Broker Profile</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Company Name</label>
+                <input type="text" id="companyName" value="SUDIP AIR TRAX PVT. LTD." />
+              </div>
+              <div class="form-group">
+                <label>Branch / Office</label>
+                <input type="text" id="branchName" value="KOLKATA / JAIGAON BRANCH" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-heading">Manifest & Transport Identification</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  <span>Job No</span>
+                  <span id="jobStatusBadge" class="status-badge status-new">New Entry</span>
+                </label>
+                <input type="number" id="jobNo" value="1" min="1" required />
+              </div>
+              <div class="form-group">
+                <label>Job Date</label>
+                <input type="date" id="jobDate" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Mode</label>
+                <select id="shippingMode">
+                  <option value="Multiple Shipping Mode">Multiple Shipping Mode</option>
+                  <option value="Multiple Truck Mode">Multiple Truck Mode</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>
+                  <span>SI No (Line #)</span>
+                  <span id="siStatusBadge" class="status-badge status-new">Line 1</span>
+                </label>
+                <input type="number" id="siNo" value="1" min="1" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Port of Loading</label>
+                <input type="text" id="portOfLoading" value="INJIGB" required />
+              </div>
+              <div class="form-group">
+                <label>ICEGATE ID</label>
+                <input type="text" id="icegateId" value="SUDIPAIRTRAX" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  <span>SB No</span>
+                  <span id="sbLockBadge" style="font-size: 10px; color: var(--text-muted);">Max 7 digits</span>
+                </label>
+                <input type="text" id="sbNo" maxlength="7" pattern="\d{1,7}" placeholder="E.G. 2018713" />
+              </div>
+              <div class="form-group">
+                <label>SB Date</label>
+                <input type="date" id="sbDate" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>LR No</label>
+                <input type="text" id="lrNo" value="NIL" />
+              </div>
+              <div class="form-group">
+                <label>LR Date</label>
+                <input type="date" id="lrDate" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  <span>Vehicle No</span>
+                  <span id="vehicleLockBadge" style="font-size: 10px; color: var(--text-muted);">Vehicle #</span>
+                </label>
+                <input type="text" id="vehicleNo" placeholder="E.G. UP22BT-4613" />
+              </div>
+              <div class="form-group">
+                <label>Reg. Country</label>
+                <input type="text" id="regCountry" value="IN" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-heading">Cargo Specification</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>No of Pkgs</label>
+                <input type="text" id="noOfPkgs" />
+              </div>
+              <div class="form-group">
+                <label>Quantity</label>
+                <input type="text" id="quantity" />
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Unit of Measure</label>
+              <input type="text" id="unit" value="KGS" />
+            </div>
+
+            <div class="form-group full-width">
+              <label>Marks & Numbers</label>
+              <textarea id="marksNos">API</textarea>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Description of Goods</label>
+              <textarea id="description">API</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="section-card">
+            <div class="section-heading">Owner Details</div>
+            <div class="form-group full-width">
+              <label>Name</label>
+              <input type="text" id="ownerName" value="SELF" />
+            </div>
+            <div class="form-group full-width">
+              <label>Address Lines</label>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <input type="text" id="ownerAddr1" value="." placeholder="Line 1" />
+                <input type="text" id="ownerAddr2" value="." placeholder="Line 2" />
+                <input type="text" id="ownerAddr3" value="." placeholder="Line 3" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>City</label>
+                <input type="text" id="ownerCity" value="." />
+              </div>
+              <div class="form-group">
+                <label>State</label>
+                <input type="text" id="ownerState" value="." />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Country</label>
+                <input type="text" id="ownerCountry" value="IN" />
+              </div>
+              <div class="form-group">
+                <label>Pin</label>
+                <input type="text" id="ownerPin" value="." />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-heading">Transporter Details</div>
+            <div class="form-group full-width">
+              <label>Transporter Name</label>
+              <input type="text" id="transName" value="SELF" />
+            </div>
+            <div class="form-group full-width">
+              <label>Address</label>
+              <input type="text" id="transAddr" value="." />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>City</label>
+                <input type="text" id="transCity" value="." />
+              </div>
+              <div class="form-group">
+                <label>State</label>
+                <input type="text" id="transState" value="." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="actions-bar">
+        <button type="button" class="btn btn-success" id="btnSave">Save</button>
+        <button type="button" class="btn btn-cloud" id="btnCloudSave">Save to Cloud</button>
+        <button type="button" class="btn btn-secondary" id="btnChecklistPDF">Download Checklist (PDF)</button>
+        <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate to Fresh Job</button>
+        <button type="reset" class="btn btn-default">Reset</button>
+        <button type="button" class="btn btn-primary" id="btnGenerate">Generate FlatFile (.egm)</button>
+      </div>
+    </form>
+
+    <div class="master-list-section">
+      <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Saved Lines / Manifest Master List</span>
+        <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total Lines: 0</span>
+      </div>
+      <div class="table-wrapper">
+        <table id="masterTable">
+          <thead>
+            <tr>
+              <th>Job #</th>
+              <th>SI #</th>
+              <th>Vehicle No</th>
+              <th>SB No</th>
+              <th>LR No</th>
+              <th>Pkgs</th>
+              <th>Qty / Unit</th>
+              <th>Description</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="masterTableBody">
+            <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="notification" id="toast"></div>
+
+  <script>
+    const GS = String.fromCharCode(29);
+    const EOR = "\n";
+    let masterJobList = [];
+
+    // Service Worker & PWA Install Prompter for Windows Desktop Installation
+    let deferredPrompt;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById("btnInstallApp");
+      if (installBtn) installBtn.style.display = "inline-flex";
+    });
+
+    document.getElementById("btnInstallApp").addEventListener("click", async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          document.getElementById("btnInstallApp").style.display = "none";
+        }
+        deferredPrompt = null;
+      }
+    });
+
+    function getTodayDate() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    }
+
+    function patchCurrentDates() {
+      const today = getTodayDate();
+      document.getElementById("jobDate").value = today;
+      document.getElementById("sbDate").value = today;
+      document.getElementById("lrDate").value = today;
+    }
+    patchCurrentDates();
+
+    function loadPersistedData() {
+      const stored = localStorage.getItem("ICEGATE_EGM_MASTER_LIST");
+      if (stored) {
+        try {
+          masterJobList = JSON.parse(stored);
+          renderMasterList();
+        } catch (e) {}
+      }
+    }
+    loadPersistedData();
+
+    // Authentication Gate (Extensible to REST API endpoint)
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const user = document.getElementById("username").value.trim().toUpperCase();
+      const pass = document.getElementById("password").value;
+
+      // Authenticable check (Sample static hash, replace with backend fetch if hosted online)
+      if (user === "ADMIN" && pass === "admin123") {
+        document.getElementById("userBadge").textContent = `User: ${user}`;
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("portalScreen").style.display = "flex";
+        showToast(`Welcome back, ${user}`);
+      } else {
+        alert("Invalid User ID or Password.");
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      document.getElementById("portalScreen").style.display = "none";
+      document.getElementById("loginScreen").style.display = "flex";
+    });
+
+    document.querySelectorAll("input[type='text'], textarea").forEach(element => {
+      element.addEventListener("input", (e) => {
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        e.target.value = e.target.value.toUpperCase();
+        e.target.setSelectionRange(start, end);
+      });
+    });
+
+    const sbInput = document.getElementById("sbNo");
+    sbInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 7);
+    });
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${year}${month}${day}`;
+    }
+
+    function getFormData() {
+      const val = (id) => (document.getElementById(id).value || "").trim().toUpperCase();
+      const rawJobDate = document.getElementById("jobDate").value;
+      const jobDateFormatted = formatDate(rawJobDate);
+      const port = val("portOfLoading");
+      const job = val("jobNo");
+      const siNo = val("siNo") || "1";
+      
+      const paddedJob = String(job).padStart(2, "0");
+      const msgRefNo = `${paddedJob}${port}${jobDateFormatted.slice(6,8)}${jobDateFormatted.slice(4,6)}${jobDateFormatted.slice(0,4)}`;
+
+      return {
+        companyName: val("companyName") || "CUSTOMS BROKER",
+        branchName: val("branchName") || "MAIN BRANCH",
+        jobNo: job,
+        siNo: siNo,
+        shippingMode: document.getElementById("shippingMode").value,
+        jobDate: rawJobDate,
+        jobDateFormatted: jobDateFormatted,
+        icegateId: val("icegateId"),
+        portOfLoading: port,
+        sbNo: val("sbNo"),
+        sbDate: document.getElementById("sbDate").value,
+        lrNo: val("lrNo") || "NIL",
+        lrDate: document.getElementById("lrDate").value,
+        vehicleNo: val("vehicleNo"),
+        regCountry: val("regCountry") || "IN",
+        ownerName: val("ownerName") || "SELF",
+        ownerAddr1: val("ownerAddr1") || ".",
+        ownerAddr2: val("ownerAddr2") || ".",
+        ownerAddr3: val("ownerAddr3") || ".",
+        ownerCity: val("ownerCity") || ".",
+        ownerState: val("ownerState") || ".",
+        ownerCountry: val("ownerCountry") || "IN",
+        ownerPin: val("ownerPin") || ".",
+        transName: val("transName") || "SELF",
+        transAddr: val("transAddr") || ".",
+        transCity: val("transCity") || ".",
+        transState: val("transState") || ".",
+        noOfPkgs: val("noOfPkgs"),
+        quantity: val("quantity"),
+        unit: val("unit"),
+        marksNos: val("marksNos") || "API",
+        description: val("description") || "API",
+        msgRefNo: msgRefNo
+      };
+    }
+
+    function populateForm(data) {
+      document.getElementById("shippingMode").value = data.shippingMode || "Multiple Shipping Mode";
+      document.getElementById("portalTitle").textContent = `Entry (${document.getElementById("shippingMode").value})`;
+      
+      if (data.companyName) document.getElementById("companyName").value = data.companyName.toUpperCase();
+      if (data.branchName) document.getElementById("branchName").value = data.branchName.toUpperCase();
+      document.getElementById("jobDate").value = data.jobDate || getTodayDate();
+      document.getElementById("portOfLoading").value = (data.portOfLoading || "INJIGB").toUpperCase();
+      document.getElementById("icegateId").value = (data.icegateId || "SUDIPAIRTRAX").toUpperCase();
+      document.getElementById("sbNo").value = (data.sbNo || "").slice(0, 7).toUpperCase();
+      document.getElementById("sbDate").value = data.sbDate || getTodayDate();
+      document.getElementById("lrNo").value = (data.lrNo || "NIL").toUpperCase();
+      document.getElementById("lrDate").value = data.lrDate || getTodayDate();
+      document.getElementById("vehicleNo").value = (data.vehicleNo || "").toUpperCase();
+      document.getElementById("regCountry").value = (data.regCountry || "IN").toUpperCase();
+      document.getElementById("ownerName").value = (data.ownerName || "SELF").toUpperCase();
+      document.getElementById("ownerAddr1").value = (data.ownerAddr1 || ".").toUpperCase();
+      document.getElementById("ownerAddr2").value = (data.ownerAddr2 || ".").toUpperCase();
+      document.getElementById("ownerAddr3").value = (data.ownerAddr3 || ".").toUpperCase();
+      document.getElementById("ownerCity").value = (data.ownerCity || ".").toUpperCase();
+      document.getElementById("ownerState").value = (data.ownerState || ".").toUpperCase();
+      document.getElementById("ownerCountry").value = (data.ownerCountry || "IN").toUpperCase();
+      document.getElementById("ownerPin").value = (data.ownerPin || ".").toUpperCase();
+      document.getElementById("transName").value = (data.transName || "SELF").toUpperCase();
+      document.getElementById("transAddr").value = (data.transAddr || ".").toUpperCase();
+      document.getElementById("transCity").value = (data.transCity || ".").toUpperCase();
+      document.getElementById("transState").value = (data.transState || ".").toUpperCase();
+      document.getElementById("noOfPkgs").value = (data.noOfPkgs || "").toUpperCase();
+      document.getElementById("quantity").value = (data.quantity || "").toUpperCase();
+      document.getElementById("unit").value = (data.unit || "KGS").toUpperCase();
+      document.getElementById("marksNos").value = (data.marksNos || "API").toUpperCase();
+      document.getElementById("description").value = (data.description || "API").toUpperCase();
+    }
+
+    function clearConsignmentFields() {
+      const today = getTodayDate();
+      document.getElementById("lrNo").value = "NIL";
+      document.getElementById("lrDate").value = today;
+      document.getElementById("noOfPkgs").value = "";
+      document.getElementById("quantity").value = "";
+      document.getElementById("unit").value = "KGS";
+      document.getElementById("marksNos").value = "API";
+      document.getElementById("description").value = "API";
+    }
+
+    const jobInput = document.getElementById("jobNo");
+    const siInput = document.getElementById("siNo");
+    const vehicleInput = document.getElementById("vehicleNo");
+    const jobBadge = document.getElementById("jobStatusBadge");
+    const siBadge = document.getElementById("siStatusBadge");
+    const shippingModeSelect = document.getElementById("shippingMode");
+    const vehicleLockBadge = document.getElementById("vehicleLockBadge");
+    const sbLockBadge = document.getElementById("sbLockBadge");
+
+    function applyModeRules(enteredJob, enteredSi) {
+      const mode = shippingModeSelect.value;
+      const otherLines = masterJobList.filter(
+        item => String(item.jobNo) === String(enteredJob) && String(item.siNo) !== String(enteredSi)
+      );
+
+      if (mode === "Multiple Shipping Mode") {
+        if (otherLines.length > 0) {
+          const inheritedVehicle = otherLines[0].vehicleNo;
+          const inheritedCountry = otherLines[0].regCountry;
+          if (inheritedVehicle) {
+            vehicleInput.value = inheritedVehicle;
+            document.getElementById("regCountry").value = inheritedCountry || "IN";
+          }
+          vehicleInput.readOnly = true;
+          vehicleLockBadge.textContent = "Locked (Inherited)";
+          vehicleLockBadge.style.color = "#2563eb";
+        } else {
+          vehicleInput.readOnly = false;
+          vehicleLockBadge.textContent = "Vehicle #";
+          vehicleLockBadge.style.color = "var(--text-muted)";
+        }
+        sbInput.readOnly = false;
+        sbLockBadge.textContent = "Max 7 digits";
+        sbLockBadge.style.color = "var(--text-muted)";
+
+      } else if (mode === "Multiple Truck Mode") {
+        vehicleInput.readOnly = false;
+        vehicleLockBadge.textContent = "Vehicle #";
+        vehicleLockBadge.style.color = "var(--text-muted)";
+
+        if (otherLines.length > 0) {
+          const inheritedSbNo = otherLines[0].sbNo;
+          const inheritedSbDate = otherLines[0].sbDate;
+          if (inheritedSbNo) {
+            sbInput.value = inheritedSbNo;
+            document.getElementById("sbDate").value = inheritedSbDate;
+          }
+          sbInput.readOnly = true;
+          sbLockBadge.textContent = "Locked (Inherited)";
+          sbLockBadge.style.color = "#2563eb";
+        } else {
+          sbInput.readOnly = false;
+          sbLockBadge.textContent = "Max 7 digits";
+          sbLockBadge.style.color = "var(--text-muted)";
+        }
+      }
+    }
+
+    function handleRealTimeSync() {
+      const enteredJob = jobInput.value.trim();
+      const enteredSi = siInput.value.trim();
+      const mode = shippingModeSelect.value;
+
+      if (!enteredJob || !enteredSi) return;
+
+      const anyJobLine = masterJobList.find(item => String(item.jobNo) === String(enteredJob));
+      if (anyJobLine) {
+        jobBadge.textContent = "Existing Job";
+        jobBadge.className = "status-badge status-existing";
+      } else {
+        jobBadge.textContent = "New Job";
+        jobBadge.className = "status-badge status-new";
+      }
+
+      const foundLine = masterJobList.find(
+        item => String(item.jobNo) === String(enteredJob) && String(item.siNo) === String(enteredSi)
+      );
+
+      if (foundLine) {
+        siBadge.textContent = `Line ${enteredSi} (Saved)`;
+        siBadge.className = "status-badge status-existing";
+        populateForm(foundLine);
+      } else {
+        siBadge.textContent = `Line ${enteredSi} (New)`;
+        siBadge.className = "status-badge status-new";
+        clearConsignmentFields();
+
+        if (anyJobLine) {
+          if (mode === "Multiple Shipping Mode") {
+            vehicleInput.value = anyJobLine.vehicleNo || "";
+            document.getElementById("regCountry").value = anyJobLine.regCountry || "IN";
+            sbInput.value = "";
+            document.getElementById("sbDate").value = getTodayDate();
+          } else if (mode === "Multiple Truck Mode") {
+            sbInput.value = anyJobLine.sbNo || "";
+            document.getElementById("sbDate").value = anyJobLine.sbDate || getTodayDate();
+            vehicleInput.value = "";
+          }
+        } else {
+          vehicleInput.value = "";
+          sbInput.value = "";
+          document.getElementById("sbDate").value = getTodayDate();
+        }
+      }
+
+      applyModeRules(enteredJob, enteredSi);
+    }
+
+    jobInput.addEventListener("input", handleRealTimeSync);
+    siInput.addEventListener("input", handleRealTimeSync);
+    shippingModeSelect.addEventListener("change", () => {
+      const mode = shippingModeSelect.value;
+      document.getElementById("portalTitle").textContent = `Entry (${mode})`;
+      handleRealTimeSync();
+    });
+
+    function renderMasterList() {
+      const tbody = document.getElementById("masterTableBody");
+      document.getElementById("jobCountLabel").textContent = `Total Lines: ${masterJobList.length}`;
+      
+      if (masterJobList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = masterJobList.map((item, idx) => `
+        <tr>
+          <td><strong>#${item.jobNo}</strong></td>
+          <td><span class="badge" style="background:#e0e7ff; color:#3730a3; border:none;">SI ${item.siNo}</span></td>
+          <td>${item.vehicleNo || '—'}</td>
+          <td><strong>${item.sbNo || '—'}</strong></td>
+          <td>${item.lrNo || '—'}</td>
+          <td>${item.noOfPkgs || '—'}</td>
+          <td>${item.quantity ? `${item.quantity} ${item.unit}` : '—'}</td>
+          <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || 'API'}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-default table-btn" onclick="editLine(${idx})">Edit</button>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteLine(${idx})">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    document.getElementById("btnSave").addEventListener("click", () => {
+      const data = getFormData();
+      if (!data.jobNo || !data.siNo) {
+        showToast("Please provide valid Job and SI Number.");
+        return;
+      }
+
+      const existingIdx = masterJobList.findIndex(
+        item => String(item.jobNo) === String(data.jobNo) && String(item.siNo) === String(data.siNo)
+      );
+
+      if (existingIdx > -1) {
+        masterJobList[existingIdx] = data;
+        showToast(`Saved: Job #${data.jobNo} Line ${data.siNo} updated.`);
+      } else {
+        masterJobList.push(data);
+        showToast(`Saved: Job #${data.jobNo} Line ${data.siNo} added.`);
+      }
+
+      localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
+      renderMasterList();
+      handleRealTimeSync();
+    });
+
+    document.getElementById("btnCloudSave").addEventListener("click", async () => {
+      if (masterJobList.length === 0) {
+        showToast("No records available to save.");
+        return;
+      }
+      localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
+      showToast("Master Records backed up to Local/Cloud Storage.");
+    });
+
+    document.getElementById("btnDuplicateFreshJob").addEventListener("click", () => {
+      const existingJobNumbers = masterJobList.map(j => parseInt(j.jobNo, 10) || 0);
+      const currentInputJob = parseInt(jobInput.value, 10) || 0;
+      const maxJob = existingJobNumbers.length > 0 ? Math.max(...existingJobNumbers, currentInputJob) : currentInputJob;
+      const nextFreshJob = maxJob + 1;
+
+      jobInput.value = nextFreshJob;
+      siInput.value = 1;
+      patchCurrentDates();
+
+      jobBadge.textContent = "New Job (Duplicate)";
+      jobBadge.className = "status-badge status-new";
+      siBadge.textContent = "Line 1 (Duplicate)";
+      siBadge.className = "status-badge status-new";
+
+      vehicleInput.readOnly = false;
+      sbInput.readOnly = false;
+
+      showToast(`Duplicated to Fresh Job #${nextFreshJob}`);
+    });
+
+    window.editLine = function(index) {
+      const item = masterJobList[index];
+      if (!item) return;
+      jobInput.value = item.jobNo;
+      siInput.value = item.siNo;
+      handleRealTimeSync();
+      showToast(`Loaded Job #${item.jobNo} (Line ${item.siNo})`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteLine = function(index) {
+      const item = masterJobList[index];
+      if (confirm(`Remove Job #${item.jobNo} Line ${item.siNo}?`)) {
+        masterJobList.splice(index, 1);
+        localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
+        renderMasterList();
+        handleRealTimeSync();
+        showToast(`Removed Line ${item.siNo}`);
+      }
+    };
+
+    // ==========================================
+    // STANDARD / NORMAL CUSTOMS CHECKLIST PDF
+    // ==========================================
+    document.getElementById("btnChecklistPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      
+      const currentJob = jobInput.value.trim();
+      const jobLines = masterJobList.filter(item => String(item.jobNo) === String(currentJob));
+      const activeData = getFormData();
+      const modeTitle = activeData.shippingMode === "Multiple Shipping Mode" ? "MULTIPLE SHIPPING" : "MULTIPLE TRUCK";
+
+      // 1. Standard Government / Regulatory Header Layout
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text((activeData.companyName || "CUSTOMS BROKER").toUpperCase(), 105, 14, { align: "center" });
+
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(`BRANCH: ${(activeData.branchName || "MAIN BRANCH").toUpperCase()}`, 105, 19, { align: "center" });
+
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`EXPORT GENERAL MANIFEST (EGM) CHECKLIST - ${modeTitle}`, 105, 25, { align: "center" });
+
+      doc.setLineWidth(0.3);
+      doc.line(14, 28, 196, 28);
+
+      // 2. Standard Metadata Box
+      doc.autoTable({
+        startY: 31,
+        theme: "plain",
+        styles: { fontSize: 8.5, cellPadding: 1.5, textColor: [0, 0, 0] },
+        body: [
+          [
+            `Job No: ${activeData.jobNo}`,
+            `Port of Loading: ${activeData.portOfLoading}`,
+            `Date: ${new Date().toLocaleDateString()}`
+          ],
+          [
+            `Job Date: ${activeData.jobDate}`,
+            `ICEGATE ID: ${activeData.icegateId}`,
+            `Mode: ${activeData.shippingMode}`
+          ],
+          [
+            `Transporter: ${activeData.transName}`,
+            `Owner: ${activeData.ownerName}`,
+            `Msg Ref: ${activeData.msgRefNo}`
+          ]
+        ]
+      });
+
+      // 3. Official Standard Itemized Table
+      const tableData = jobLines.length > 0 
+        ? jobLines.map(line => [
+            line.siNo, 
+            line.vehicleNo || "—", 
+            line.sbNo || "—", 
+            line.sbDate || "—", 
+            line.lrNo || "NIL", 
+            `${line.quantity || "0"} ${line.unit || "KGS"}`, 
+            line.noOfPkgs || "0", 
+            line.description || "API"
+          ])
+        : [[
+            activeData.siNo, 
+            activeData.vehicleNo || "—", 
+            activeData.sbNo || "—", 
+            activeData.sbDate || "—", 
+            activeData.lrNo || "NIL", 
+            `${activeData.quantity || "0"} ${activeData.unit || "KGS"}`, 
+            activeData.noOfPkgs || "0", 
+            activeData.description || "API"
+          ]];
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 4,
+        head: [["SI #", "Vehicle No", "SB No", "SB Date", "LR No", "Quantity", "Pkgs", "Description"]],
+        body: tableData,
+        theme: "grid",
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          fontSize: 8.5,
+          lineWidth: 0.2
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [0, 0, 0],
+          cellPadding: 2.5
+        },
+        columnStyles: {
+          0: { cellWidth: 12, halign: "center" },
+          1: { cellWidth: 26 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 26 },
+          6: { cellWidth: 16, halign: "center" },
+          7: { cellWidth: "auto" }
+        }
+      });
+
+      // 4. Standard Regulatory Signature Blocks
+      let finalY = doc.lastAutoTable.finalY + 28;
+      if (finalY > 260) {
+        doc.addPage();
+        finalY = 30;
+      }
+
+      doc.setFontSize(8.5);
+      doc.setFont("Helvetica", "normal");
+      doc.line(14, finalY, 74, finalY);
+      doc.text("Signature of Customs Broker / Agent", 14, finalY + 5);
+
+      doc.line(136, finalY, 196, finalY);
+      doc.text("Signature of Customs Officer", 136, finalY + 5);
+
+      doc.save(`Checklist_Job_${currentJob}.pdf`);
+      showToast(`Downloaded Standard Checklist PDF for Job #${currentJob}`);
+    });
+
+    // Flatfile .egm Generation (ASCII \x1D)
+    document.getElementById("btnGenerate").addEventListener("click", () => {
+      const currentJob = jobInput.value.trim();
+      const jobLines = masterJobList.filter(item => String(item.jobNo) === String(currentJob));
+      const currentData = getFormData();
+      const recordsToExport = jobLines.length > 0 ? jobLines : [currentData];
+
+      const now = new Date();
+      const curDate = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const curTime = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+
+      const hrec = ["HREC", "ZZ", currentData.icegateId, "ZZ", currentData.portOfLoading, "ICES1_5", "P", "", "LCCHE01", currentData.msgRefNo, curDate, curTime].join(GS);
+
+      const egmRows = recordsToExport.map(data => [
+        "F",
+        data.portOfLoading,
+        data.jobNo,
+        data.jobDateFormatted,
+        data.vehicleNo,
+        (data.sbNo || "").slice(0, 7),
+        formatDate(data.sbDate),
+        data.ownerName,
+        data.ownerAddr1,
+        data.ownerAddr2,
+        data.ownerAddr3,
+        data.ownerCity,
+        data.ownerState,
+        data.regCountry,
+        data.lrNo,
+        formatDate(data.lrDate),
+        data.noOfPkgs,
+        data.quantity,
+        data.unit,
+        data.marksNos || "API",
+        data.siNo || "1",
+        "S",
+        data.transName,
+        data.transAddr,
+        data.transCity,
+        data.transState,
+        data.description || "API"
+      ].join(GS)).join(EOR);
+
+      const trec = ["TREC", currentData.msgRefNo].join(GS);
+      const flatFile = `${hrec}${EOR}<TABLE>EGM${EOR}${egmRows}${EOR}<END-EGM>${EOR}${trec}${EOR}`;
+
+      const blob = new Blob([flatFile], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${currentData.msgRefNo}.egm`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast(`Exported ${currentData.msgRefNo}.egm`);
+    });
+  </script>
+</body>
+</html>
