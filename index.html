@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ICEGATE EGM Portal</title>
+  <title>BIKASH DEV EGM - Enterprise Edition</title>
   
-  <!-- Manifest for Direct Windows Installation (PWA) -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
 
-  <!-- Fonts & PDF Libraries -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -70,10 +68,37 @@
     .header-bar {
       background: #1e293b;
       color: #ffffff;
-      padding: 14px 24px;
+      padding: 12px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    .nav-tab {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      transition: all 0.15s ease;
+    }
+
+    .nav-tab.active {
+      background: var(--primary);
+      color: #ffffff;
     }
 
     .badge {
@@ -89,6 +114,9 @@
     .status-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
     .status-existing { background: #dbeafe; color: #1e40af; }
     .status-new { background: #dcfce7; color: #166534; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     .form-layout { padding: 20px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; }
     .section-card { background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
@@ -131,271 +159,408 @@
 </head>
 <body>
 
-  <!-- 1. LOGIN / AUTHENTICATION INTERFACE -->
+  <!-- 1. LOGIN SCREEN -->
   <div class="login-container" id="loginScreen">
     <div style="text-align: center;">
-      <h2 style="font-size: 18px; font-weight: 700;">Customs EGM System</h2>
-      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access secure EGM generator</p>
+      <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.02em;">BIKASH DEV EGM</h2>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access EGM Portal</p>
     </div>
-    <form id="loginForm" style="display: flex; flex-direction: column; gap: 12px;">
+    <form id="loginForm" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="form-group">
         <label>Operator / User ID</label>
-        <input type="text" id="username" placeholder="E.G. ADMIN" value="ADMIN" required />
+        <input type="text" id="username" placeholder="ENTER OPERATOR ID" required autocomplete="username" />
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="password" placeholder="••••••••" value="admin123" style="text-transform: none;" required />
+        <input type="password" id="password" placeholder="••••••••" style="text-transform: none;" required autocomplete="current-password" />
       </div>
-      <button type="submit" class="btn btn-primary" style="margin-top: 6px; height: 36px;">Login to Portal</button>
-      <div style="font-size: 11px; text-align: center; color: var(--text-muted);">Default: ADMIN / admin123</div>
+      <button type="submit" class="btn btn-primary" style="margin-top: 4px; height: 38px; font-size: 13px;">Login to Portal</button>
     </form>
   </div>
 
   <!-- 2. MAIN APPLICATION -->
   <div class="portal-container" id="portalScreen">
+    
+    <!-- Top Navigation & Master Menu Header -->
     <div class="header-bar">
-      <div style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-        <span id="portalTitle">Entry (Multiple Shipping Mode)</span>
-        <span class="badge" id="userBadge">User: —</span>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">BIKASH DEV EGM</span>
+        <div class="nav-tabs">
+          <button type="button" class="nav-tab active" onclick="switchTab('entryTab')">EGM Entry</button>
+          <button type="button" class="nav-tab" onclick="switchTab('masterTab')">Master Settings</button>
+          <button type="button" class="nav-tab" id="adminNavBtn" onclick="switchTab('adminTab')">Admin Panel</button>
+        </div>
       </div>
-      <div style="display:flex; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge" id="userBadge">User: —</span>
         <button type="button" class="btn btn-default" id="btnInstallApp" style="display:none; padding: 4px 8px; font-size: 11px;">⬇ Install App</button>
         <button type="button" class="btn btn-default" id="btnLogout" style="padding: 4px 8px; font-size: 11px;">Logout</button>
       </div>
     </div>
 
-    <form id="egmForm">
-      <div class="form-layout">
-        
-        <!-- Left Side -->
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <div class="section-card">
-            <div class="section-heading">Customs Broker Profile</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Company Name</label>
-                <input type="text" id="companyName" value="SUDIP AIR TRAX PVT. LTD." />
+    <!-- TAB 1: EGM ENTRY SCREEN -->
+    <div id="entryTab" class="tab-content active">
+      <form id="egmForm">
+        <div class="form-layout">
+          
+          <!-- Left Side: Manifest & Cargo Details -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="section-card">
+              <div class="section-heading">Manifest & Transport Identification</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>
+                    <span>Job No</span>
+                    <span id="jobStatusBadge" class="status-badge status-new">New Entry</span>
+                  </label>
+                  <input type="number" id="jobNo" value="1" min="1" required />
+                </div>
+                <div class="form-group">
+                  <label>Job Date</label>
+                  <input type="date" id="jobDate" required />
+                </div>
               </div>
-              <div class="form-group">
-                <label>Branch / Office</label>
-                <input type="text" id="branchName" value="KOLKATA / JAIGAON BRANCH" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Mode</label>
+                  <select id="shippingMode">
+                    <option value="Multiple Shipping Mode">Multiple Shipping Mode</option>
+                    <option value="Multiple Truck Mode">Multiple Truck Mode</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>
+                    <span>SI No (Line #)</span>
+                    <span id="siStatusBadge" class="status-badge status-new">Line 1</span>
+                  </label>
+                  <input type="number" id="siNo" value="1" min="1" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Port of Loading</label>
+                  <input type="text" id="portOfLoading" value="INJIGB" required />
+                </div>
+                <div class="form-group">
+                  <label>Active ICEGATE ID</label>
+                  <input type="text" id="activeIcegateId" value="SUDIPAIRTRAX" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>
+                    <span>SB No</span>
+                    <span id="sbLockBadge" style="font-size: 10px; color: var(--text-muted);">Max 7 digits</span>
+                  </label>
+                  <input type="text" id="sbNo" maxlength="7" pattern="\d{1,7}" placeholder="E.G. 2018713" />
+                </div>
+                <div class="form-group">
+                  <label>SB Date</label>
+                  <input type="date" id="sbDate" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>LR No</label>
+                  <input type="text" id="lrNo" value="NIL" />
+                </div>
+                <div class="form-group">
+                  <label>LR Date</label>
+                  <input type="date" id="lrDate" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>
+                    <span>Vehicle No</span>
+                    <span id="vehicleLockBadge" style="font-size: 10px; color: var(--text-muted);">Vehicle #</span>
+                  </label>
+                  <input type="text" id="vehicleNo" placeholder="E.G. UP22BT-4613" />
+                </div>
+                <div class="form-group">
+                  <label>Reg. Country</label>
+                  <input type="text" id="regCountry" value="IN" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Cargo Specification -->
+            <div class="section-card">
+              <div class="section-heading">Cargo Specification</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>No of Pkgs</label>
+                  <input type="text" id="noOfPkgs" />
+                </div>
+                <div class="form-group">
+                  <label>Quantity</label>
+                  <input type="text" id="quantity" />
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label>Unit of Measure</label>
+                <input type="text" id="unit" value="KGS" />
+              </div>
+
+              <div class="form-group full-width">
+                <label>Marks & Numbers</label>
+                <textarea id="marksNos">API</textarea>
+              </div>
+
+              <div class="form-group full-width">
+                <label>Description of Goods</label>
+                <textarea id="description">API</textarea>
               </div>
             </div>
           </div>
 
-          <div class="section-card">
-            <div class="section-heading">Manifest & Transport Identification</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>
-                  <span>Job No</span>
-                  <span id="jobStatusBadge" class="status-badge status-new">New Entry</span>
-                </label>
-                <input type="number" id="jobNo" value="1" min="1" required />
-              </div>
-              <div class="form-group">
-                <label>Job Date</label>
-                <input type="date" id="jobDate" required />
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>Mode</label>
-                <select id="shippingMode">
-                  <option value="Multiple Shipping Mode">Multiple Shipping Mode</option>
-                  <option value="Multiple Truck Mode">Multiple Truck Mode</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>
-                  <span>SI No (Line #)</span>
-                  <span id="siStatusBadge" class="status-badge status-new">Line 1</span>
-                </label>
-                <input type="number" id="siNo" value="1" min="1" required />
+          <!-- Right Side: Owner & Transporter -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="section-card">
+              <div class="section-heading">Active Company / Branch Profile</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Company Name</label>
+                  <input type="text" id="activeCompanyName" value="BIKASH DEV" />
+                </div>
+                <div class="form-group">
+                  <label>Branch / Office</label>
+                  <input type="text" id="activeBranchName" value="KOLKATA / JAIGAON BRANCH" />
+                </div>
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label>Port of Loading</label>
-                <input type="text" id="portOfLoading" value="INJIGB" required />
+            <div class="section-card">
+              <div class="section-heading">Owner Details</div>
+              <div class="form-group full-width">
+                <label>Name</label>
+                <input type="text" id="ownerName" value="SELF" />
               </div>
-              <div class="form-group">
-                <label>ICEGATE ID</label>
-                <input type="text" id="icegateId" value="SUDIPAIRTRAX" required />
+              <div class="form-group full-width">
+                <label>Address Lines</label>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <input type="text" id="ownerAddr1" value="." placeholder="Line 1" />
+                  <input type="text" id="ownerAddr2" value="." placeholder="Line 2" />
+                  <input type="text" id="ownerAddr3" value="." placeholder="Line 3" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" id="ownerCity" value="." />
+                </div>
+                <div class="form-group">
+                  <label>State</label>
+                  <input type="text" id="ownerState" value="." />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Country</label>
+                  <input type="text" id="ownerCountry" value="IN" />
+                </div>
+                <div class="form-group">
+                  <label>Pin</label>
+                  <input type="text" id="ownerPin" value="." />
+                </div>
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label>
-                  <span>SB No</span>
-                  <span id="sbLockBadge" style="font-size: 10px; color: var(--text-muted);">Max 7 digits</span>
-                </label>
-                <input type="text" id="sbNo" maxlength="7" pattern="\d{1,7}" placeholder="E.G. 2018713" />
+            <div class="section-card">
+              <div class="section-heading">Transporter Details</div>
+              <div class="form-group full-width">
+                <label>Transporter Name</label>
+                <input type="text" id="transName" value="SELF" />
               </div>
-              <div class="form-group">
-                <label>SB Date</label>
-                <input type="date" id="sbDate" required />
+              <div class="form-group full-width">
+                <label>Address</label>
+                <input type="text" id="transAddr" value="." />
               </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>LR No</label>
-                <input type="text" id="lrNo" value="NIL" />
-              </div>
-              <div class="form-group">
-                <label>LR Date</label>
-                <input type="date" id="lrDate" required />
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>
-                  <span>Vehicle No</span>
-                  <span id="vehicleLockBadge" style="font-size: 10px; color: var(--text-muted);">Vehicle #</span>
-                </label>
-                <input type="text" id="vehicleNo" placeholder="E.G. UP22BT-4613" />
-              </div>
-              <div class="form-group">
-                <label>Reg. Country</label>
-                <input type="text" id="regCountry" value="IN" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" id="transCity" value="." />
+                </div>
+                <div class="form-group">
+                  <label>State</label>
+                  <input type="text" id="transState" value="." />
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="section-card">
-            <div class="section-heading">Cargo Specification</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>No of Pkgs</label>
-                <input type="text" id="noOfPkgs" />
-              </div>
-              <div class="form-group">
-                <label>Quantity</label>
-                <input type="text" id="quantity" />
-              </div>
-            </div>
-
-            <div class="form-group full-width">
-              <label>Unit of Measure</label>
-              <input type="text" id="unit" value="KGS" />
-            </div>
-
-            <div class="form-group full-width">
-              <label>Marks & Numbers</label>
-              <textarea id="marksNos">API</textarea>
-            </div>
-
-            <div class="form-group full-width">
-              <label>Description of Goods</label>
-              <textarea id="description">API</textarea>
-            </div>
-          </div>
         </div>
 
-        <!-- Right Side -->
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <div class="section-card">
-            <div class="section-heading">Owner Details</div>
-            <div class="form-group full-width">
-              <label>Name</label>
-              <input type="text" id="ownerName" value="SELF" />
-            </div>
-            <div class="form-group full-width">
-              <label>Address Lines</label>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <input type="text" id="ownerAddr1" value="." placeholder="Line 1" />
-                <input type="text" id="ownerAddr2" value="." placeholder="Line 2" />
-                <input type="text" id="ownerAddr3" value="." placeholder="Line 3" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>City</label>
-                <input type="text" id="ownerCity" value="." />
-              </div>
-              <div class="form-group">
-                <label>State</label>
-                <input type="text" id="ownerState" value="." />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Country</label>
-                <input type="text" id="ownerCountry" value="IN" />
-              </div>
-              <div class="form-group">
-                <label>Pin</label>
-                <input type="text" id="ownerPin" value="." />
-              </div>
-            </div>
-          </div>
-
-          <div class="section-card">
-            <div class="section-heading">Transporter Details</div>
-            <div class="form-group full-width">
-              <label>Transporter Name</label>
-              <input type="text" id="transName" value="SELF" />
-            </div>
-            <div class="form-group full-width">
-              <label>Address</label>
-              <input type="text" id="transAddr" value="." />
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>City</label>
-                <input type="text" id="transCity" value="." />
-              </div>
-              <div class="form-group">
-                <label>State</label>
-                <input type="text" id="transState" value="." />
-              </div>
-            </div>
-          </div>
+        <div class="actions-bar">
+          <button type="button" class="btn btn-success" id="btnSave">Save</button>
+          <button type="button" class="btn btn-cloud" id="btnCloudSave">Save to Cloud</button>
+          <button type="button" class="btn btn-secondary" id="btnChecklistPDF">Download Checklist (PDF)</button>
+          <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate to Fresh Job</button>
+          <button type="reset" class="btn btn-default">Reset</button>
+          <button type="button" class="btn btn-primary" id="btnGenerate">Generate FlatFile (.egm)</button>
         </div>
+      </form>
 
-      </div>
-
-      <div class="actions-bar">
-        <button type="button" class="btn btn-success" id="btnSave">Save</button>
-        <button type="button" class="btn btn-cloud" id="btnCloudSave">Save to Cloud</button>
-        <button type="button" class="btn btn-secondary" id="btnChecklistPDF">Download Checklist (PDF)</button>
-        <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate to Fresh Job</button>
-        <button type="reset" class="btn btn-default">Reset</button>
-        <button type="button" class="btn btn-primary" id="btnGenerate">Generate FlatFile (.egm)</button>
-      </div>
-    </form>
-
-    <div class="master-list-section">
-      <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>Saved Lines / Manifest Master List</span>
-        <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total Lines: 0</span>
-      </div>
-      <div class="table-wrapper">
-        <table id="masterTable">
-          <thead>
-            <tr>
-              <th>Job #</th>
-              <th>SI #</th>
-              <th>Vehicle No</th>
-              <th>SB No</th>
-              <th>LR No</th>
-              <th>Pkgs</th>
-              <th>Qty / Unit</th>
-              <th>Description</th>
-              <th style="text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="masterTableBody">
-            <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>
-          </tbody>
-        </table>
+      <div class="master-list-section">
+        <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Saved Lines / Manifest Master List</span>
+          <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total Lines: 0</span>
+        </div>
+        <div class="table-wrapper">
+          <table id="masterTable">
+            <thead>
+              <tr>
+                <th>Job #</th>
+                <th>SI #</th>
+                <th>Vehicle No</th>
+                <th>SB No</th>
+                <th>LR No</th>
+                <th>Pkgs</th>
+                <th>Qty / Unit</th>
+                <th>Description</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="masterTableBody">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+
+    <!-- TAB 2: MASTER SETTINGS -->
+    <div id="masterTab" class="tab-content">
+      <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+        <div class="section-card">
+          <div class="section-heading">Master Broker / System Configuration</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+            Set your active company profile, default ICEGATE Sender ID, and default Port of Loading.
+          </p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Select Saved Company Profile</label>
+              <select id="masterProfileSelect" onchange="applySelectedCompanyProfile()">
+                <!-- Populated Dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Default ICEGATE ID</label>
+              <input type="text" id="masterIcegateId" value="SUDIPAIRTRAX" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Default Company Name</label>
+              <input type="text" id="masterCompanyName" value="BIKASH DEV" />
+            </div>
+            <div class="form-group">
+              <label>Default Branch / Location</label>
+              <input type="text" id="masterBranchName" value="KOLKATA / JAIGAON BRANCH" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Default Port of Loading</label>
+              <input type="text" id="masterPort" value="INJIGB" />
+            </div>
+            <div class="form-group" style="justify-content: flex-end;">
+              <button type="button" class="btn btn-primary" onclick="saveMasterSettings()" style="height: 34px;">Save & Apply Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ADMIN PANEL -->
+    <div id="adminTab" class="tab-content">
+      <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        
+        <!-- Left: Add Company Master -->
+        <div class="section-card">
+          <div class="section-heading">Add / Manage Company Profiles</div>
+          <form id="addCompanyForm" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="form-group">
+              <label>Company Name</label>
+              <input type="text" id="newCompanyName" placeholder="E.G. BIKASH DEV" required />
+            </div>
+            <div class="form-group">
+              <label>Branch Name</label>
+              <input type="text" id="newBranchName" placeholder="E.G. JAIGAON LCS BRANCH" required />
+            </div>
+            <div class="form-group">
+              <label>ICEGATE ID</label>
+              <input type="text" id="newIcegateId" placeholder="E.G. SUDIPAIRTRAX" required />
+            </div>
+            <div class="form-group">
+              <label>Default Port Code</label>
+              <input type="text" id="newPortCode" value="INJIGB" required />
+            </div>
+            <button type="submit" class="btn btn-success" style="height: 34px; margin-top: 6px;">+ Add Company Profile</button>
+          </form>
+
+          <div class="section-heading" style="margin-top: 10px;">Registered Companies</div>
+          <div class="table-wrapper" style="max-height: 140px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Branch</th>
+                  <th>ICEGATE ID</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="companyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: Add User Master -->
+        <div class="section-card">
+          <div class="section-heading">Add / Manage User Credentials</div>
+          <form id="addUserForm" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="form-group">
+              <label>Username / Operator ID</label>
+              <input type="text" id="newUsername" placeholder="E.G. OPERATOR_01" required />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="newPassword" placeholder="••••••••" style="text-transform: none;" required />
+            </div>
+            <div class="form-group">
+              <label>User Role</label>
+              <select id="newUserRole">
+                <option value="OPERATOR">Operator (Standard Entry)</option>
+                <option value="ADMIN">Admin (Full Control)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 34px; margin-top: 6px;">+ Register User</button>
+          </form>
+
+          <div class="section-heading" style="margin-top: 10px;">System Users</div>
+          <div class="table-wrapper" style="max-height: 140px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <div class="notification" id="toast"></div>
@@ -405,25 +570,42 @@
     const EOR = "\n";
     let masterJobList = [];
 
-    // Service Worker & PWA Install Prompter for Windows Desktop Installation
-    let deferredPrompt;
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const installBtn = document.getElementById("btnInstallApp");
-      if (installBtn) installBtn.style.display = "inline-flex";
-    });
+    // Master Storage Initializers
+    let companiesMaster = [
+      { id: "1", name: "BIKASH DEV", branch: "KOLKATA / JAIGAON BRANCH", icegateId: "SUDIPAIRTRAX", port: "INJIGB" }
+    ];
 
-    document.getElementById("btnInstallApp").addEventListener("click", async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === "accepted") {
-          document.getElementById("btnInstallApp").style.display = "none";
-        }
-        deferredPrompt = null;
-      }
-    });
+    let usersMaster = [
+      { username: "ADMIN", role: "ADMIN", pass: "admin123" },
+      { username: "OPERATOR", role: "OPERATOR", pass: "op123" }
+    ];
+
+    let currentLoggedInUser = null;
+
+    function initSystemData() {
+      const savedCompanies = localStorage.getItem("ICEGATE_COMPANIES");
+      if (savedCompanies) companiesMaster = JSON.parse(savedCompanies);
+
+      const savedUsers = localStorage.getItem("ICEGATE_USERS");
+      if (savedUsers) usersMaster = JSON.parse(savedUsers);
+
+      const savedJobs = localStorage.getItem("ICEGATE_EGM_MASTER_LIST");
+      if (savedJobs) masterJobList = JSON.parse(savedJobs);
+
+      renderCompanyProfiles();
+      renderUsersTable();
+      renderMasterList();
+      populateMasterDropdown();
+    }
+
+    window.switchTab = function(tabId) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".nav-tab").forEach(el => el.classList.remove("active"));
+
+      document.getElementById(tabId).classList.add("active");
+      const activeBtn = Array.from(document.querySelectorAll(".nav-tab")).find(btn => btn.getAttribute("onclick").includes(tabId));
+      if (activeBtn) activeBtn.classList.add("active");
+    };
 
     function getTodayDate() {
       const now = new Date();
@@ -436,40 +618,19 @@
       document.getElementById("sbDate").value = today;
       document.getElementById("lrDate").value = today;
     }
-    patchCurrentDates();
 
-    function loadPersistedData() {
-      const stored = localStorage.getItem("ICEGATE_EGM_MASTER_LIST");
-      if (stored) {
-        try {
-          masterJobList = JSON.parse(stored);
-          renderMasterList();
-        } catch (e) {}
-      }
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
     }
-    loadPersistedData();
 
-    // Authentication Gate (Extensible to REST API endpoint)
-    document.getElementById("loginForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const user = document.getElementById("username").value.trim().toUpperCase();
-      const pass = document.getElementById("password").value;
-
-      // Authenticable check (Sample static hash, replace with backend fetch if hosted online)
-      if (user === "ADMIN" && pass === "admin123") {
-        document.getElementById("userBadge").textContent = `User: ${user}`;
-        document.getElementById("loginScreen").style.display = "none";
-        document.getElementById("portalScreen").style.display = "flex";
-        showToast(`Welcome back, ${user}`);
-      } else {
-        alert("Invalid User ID or Password.");
-      }
-    });
-
-    document.getElementById("btnLogout").addEventListener("click", () => {
-      document.getElementById("portalScreen").style.display = "none";
-      document.getElementById("loginScreen").style.display = "flex";
-    });
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${year}${month}${day}`;
+    }
 
     document.querySelectorAll("input[type='text'], textarea").forEach(element => {
       element.addEventListener("input", (e) => {
@@ -485,19 +646,171 @@
       e.target.value = e.target.value.replace(/\D/g, "").slice(0, 7);
     });
 
-    function showToast(message) {
-      const toast = document.getElementById("toast");
-      toast.textContent = message;
-      toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 3000);
+    // ==========================================
+    // AUTHENTICATION & LOGIN
+    // ==========================================
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const enteredUser = document.getElementById("username").value.trim().toUpperCase();
+      const enteredPass = document.getElementById("password").value;
+
+      const matched = usersMaster.find(u => u.username === enteredUser && u.pass === enteredPass);
+
+      if (matched) {
+        currentLoggedInUser = matched;
+        document.getElementById("userBadge").textContent = `${matched.username} (${matched.role})`;
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("portalScreen").style.display = "flex";
+
+        const adminBtn = document.getElementById("adminNavBtn");
+        if (matched.role !== "ADMIN") {
+          adminBtn.style.display = "none";
+        } else {
+          adminBtn.style.display = "block";
+        }
+
+        switchTab("entryTab");
+        showToast(`Signed in as ${matched.username}`);
+      } else {
+        alert("Invalid Username or Password.");
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      currentLoggedInUser = null;
+      document.getElementById("portalScreen").style.display = "none";
+      document.getElementById("loginScreen").style.display = "flex";
+      document.getElementById("loginForm").reset();
+    });
+
+    // ==========================================
+    // MASTER SETTINGS & COMPANY PROFILES
+    // ==========================================
+    function populateMasterDropdown() {
+      const select = document.getElementById("masterProfileSelect");
+      select.innerHTML = companiesMaster.map(c => `
+        <option value="${c.id}">${c.name} - ${c.branch} (${c.icegateId})</option>
+      `).join("");
     }
 
-    function formatDate(dateStr) {
-      if (!dateStr) return "";
-      const [year, month, day] = dateStr.split("-");
-      return `${year}${month}${day}`;
+    window.applySelectedCompanyProfile = function() {
+      const selectedId = document.getElementById("masterProfileSelect").value;
+      const comp = companiesMaster.find(c => c.id === selectedId);
+      if (comp) {
+        document.getElementById("masterCompanyName").value = comp.name;
+        document.getElementById("masterBranchName").value = comp.branch;
+        document.getElementById("masterIcegateId").value = comp.icegateId;
+        document.getElementById("masterPort").value = comp.port;
+      }
+    };
+
+    window.saveMasterSettings = function() {
+      const name = document.getElementById("masterCompanyName").value.toUpperCase();
+      const branch = document.getElementById("masterBranchName").value.toUpperCase();
+      const icegate = document.getElementById("masterIcegateId").value.toUpperCase();
+      const port = document.getElementById("masterPort").value.toUpperCase();
+
+      document.getElementById("activeCompanyName").value = name;
+      document.getElementById("activeBranchName").value = branch;
+      document.getElementById("activeIcegateId").value = icegate;
+      document.getElementById("portOfLoading").value = port;
+
+      showToast("Master Settings applied to Active Manifest.");
+      switchTab("entryTab");
+    };
+
+    // ==========================================
+    // ADMIN PANEL
+    // ==========================================
+    document.getElementById("addCompanyForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const newComp = {
+        id: String(Date.now()),
+        name: document.getElementById("newCompanyName").value.trim().toUpperCase(),
+        branch: document.getElementById("newBranchName").value.trim().toUpperCase(),
+        icegateId: document.getElementById("newIcegateId").value.trim().toUpperCase(),
+        port: document.getElementById("newPortCode").value.trim().toUpperCase()
+      };
+
+      companiesMaster.push(newComp);
+      localStorage.setItem("ICEGATE_COMPANIES", JSON.stringify(companiesMaster));
+      renderCompanyProfiles();
+      populateMasterDropdown();
+      document.getElementById("addCompanyForm").reset();
+      showToast(`Company '${newComp.name}' registered.`);
+    });
+
+    function renderCompanyProfiles() {
+      const tbody = document.getElementById("companyTableBody");
+      tbody.innerHTML = companiesMaster.map((c, idx) => `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.branch}</td>
+          <td>${c.icegateId}</td>
+          <td>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteCompany(${idx})">✕</button>
+          </td>
+        </tr>
+      `).join("");
     }
 
+    window.deleteCompany = function(index) {
+      if (companiesMaster.length <= 1) {
+        alert("Must retain at least one default company.");
+        return;
+      }
+      if (confirm("Delete this company profile?")) {
+        companiesMaster.splice(index, 1);
+        localStorage.setItem("ICEGATE_COMPANIES", JSON.stringify(companiesMaster));
+        renderCompanyProfiles();
+        populateMasterDropdown();
+      }
+    };
+
+    document.getElementById("addUserForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const newUser = {
+        username: document.getElementById("newUsername").value.trim().toUpperCase(),
+        pass: document.getElementById("newPassword").value,
+        role: document.getElementById("newUserRole").value
+      };
+
+      if (usersMaster.find(u => u.username === newUser.username)) {
+        alert("Username already exists.");
+        return;
+      }
+
+      usersMaster.push(newUser);
+      localStorage.setItem("ICEGATE_USERS", JSON.stringify(usersMaster));
+      renderUsersTable();
+      document.getElementById("addUserForm").reset();
+      showToast(`User '${newUser.username}' created.`);
+    });
+
+    function renderUsersTable() {
+      const tbody = document.getElementById("userTableBody");
+      tbody.innerHTML = usersMaster.map((u, idx) => `
+        <tr>
+          <td><strong>${u.username}</strong></td>
+          <td><span class="badge">${u.role}</span></td>
+          <td>
+            ${u.username === 'ADMIN' ? '—' : `<button type="button" class="btn btn-danger table-btn" onclick="deleteUser(${idx})">✕</button>`}
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.deleteUser = function(index) {
+      if (confirm("Delete this user?")) {
+        usersMaster.splice(index, 1);
+        localStorage.setItem("ICEGATE_USERS", JSON.stringify(usersMaster));
+        renderUsersTable();
+      }
+    };
+
+    // ==========================================
+    // EGM ENTRY FORM LOGIC
+    // ==========================================
     function getFormData() {
       const val = (id) => (document.getElementById(id).value || "").trim().toUpperCase();
       const rawJobDate = document.getElementById("jobDate").value;
@@ -510,14 +823,14 @@
       const msgRefNo = `${paddedJob}${port}${jobDateFormatted.slice(6,8)}${jobDateFormatted.slice(4,6)}${jobDateFormatted.slice(0,4)}`;
 
       return {
-        companyName: val("companyName") || "CUSTOMS BROKER",
-        branchName: val("branchName") || "MAIN BRANCH",
+        companyName: val("activeCompanyName") || "BIKASH DEV",
+        branchName: val("activeBranchName") || "MAIN BRANCH",
         jobNo: job,
         siNo: siNo,
         shippingMode: document.getElementById("shippingMode").value,
         jobDate: rawJobDate,
         jobDateFormatted: jobDateFormatted,
-        icegateId: val("icegateId"),
+        icegateId: val("activeIcegateId"),
         portOfLoading: port,
         sbNo: val("sbNo"),
         sbDate: document.getElementById("sbDate").value,
@@ -548,13 +861,11 @@
 
     function populateForm(data) {
       document.getElementById("shippingMode").value = data.shippingMode || "Multiple Shipping Mode";
-      document.getElementById("portalTitle").textContent = `Entry (${document.getElementById("shippingMode").value})`;
-      
-      if (data.companyName) document.getElementById("companyName").value = data.companyName.toUpperCase();
-      if (data.branchName) document.getElementById("branchName").value = data.branchName.toUpperCase();
+      if (data.companyName) document.getElementById("activeCompanyName").value = data.companyName.toUpperCase();
+      if (data.branchName) document.getElementById("activeBranchName").value = data.branchName.toUpperCase();
       document.getElementById("jobDate").value = data.jobDate || getTodayDate();
       document.getElementById("portOfLoading").value = (data.portOfLoading || "INJIGB").toUpperCase();
-      document.getElementById("icegateId").value = (data.icegateId || "SUDIPAIRTRAX").toUpperCase();
+      document.getElementById("activeIcegateId").value = (data.icegateId || "SUDIPAIRTRAX").toUpperCase();
       document.getElementById("sbNo").value = (data.sbNo || "").slice(0, 7).toUpperCase();
       document.getElementById("sbDate").value = data.sbDate || getTodayDate();
       document.getElementById("lrNo").value = (data.lrNo || "NIL").toUpperCase();
@@ -701,11 +1012,7 @@
 
     jobInput.addEventListener("input", handleRealTimeSync);
     siInput.addEventListener("input", handleRealTimeSync);
-    shippingModeSelect.addEventListener("change", () => {
-      const mode = shippingModeSelect.value;
-      document.getElementById("portalTitle").textContent = `Entry (${mode})`;
-      handleRealTimeSync();
-    });
+    shippingModeSelect.addEventListener("change", handleRealTimeSync);
 
     function renderMasterList() {
       const tbody = document.getElementById("masterTableBody");
@@ -741,6 +1048,11 @@
         return;
       }
 
+      if (data.sbNo && data.sbNo.length > 7) {
+        showToast("SB Number cannot exceed 7 digits.");
+        return;
+      }
+
       const existingIdx = masterJobList.findIndex(
         item => String(item.jobNo) === String(data.jobNo) && String(item.siNo) === String(data.siNo)
       );
@@ -758,7 +1070,7 @@
       handleRealTimeSync();
     });
 
-    document.getElementById("btnCloudSave").addEventListener("click", async () => {
+    document.getElementById("btnCloudSave").addEventListener("click", () => {
       if (masterJobList.length === 0) {
         showToast("No records available to save.");
         return;
@@ -810,7 +1122,7 @@
     };
 
     // ==========================================
-    // STANDARD / NORMAL CUSTOMS CHECKLIST PDF
+    // STANDARD / NORMAL OFFICIAL PDF CHECKLIST
     // ==========================================
     document.getElementById("btnChecklistPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
@@ -821,10 +1133,10 @@
       const activeData = getFormData();
       const modeTitle = activeData.shippingMode === "Multiple Shipping Mode" ? "MULTIPLE SHIPPING" : "MULTIPLE TRUCK";
 
-      // 1. Standard Government / Regulatory Header Layout
+      // 1. Official Standard Header
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(13);
-      doc.text((activeData.companyName || "CUSTOMS BROKER").toUpperCase(), 105, 14, { align: "center" });
+      doc.text((activeData.companyName || "BIKASH DEV").toUpperCase(), 105, 14, { align: "center" });
 
       doc.setFont("Helvetica", "normal");
       doc.setFontSize(9);
@@ -913,7 +1225,7 @@
         }
       });
 
-      // 4. Standard Regulatory Signature Blocks
+      // 4. Sign-off Footer
       let finalY = doc.lastAutoTable.finalY + 28;
       if (finalY > 260) {
         doc.addPage();
@@ -932,7 +1244,9 @@
       showToast(`Downloaded Standard Checklist PDF for Job #${currentJob}`);
     });
 
-    // Flatfile .egm Generation (ASCII \x1D)
+    // ==========================================
+    // FLATFILE .EGM GENERATOR (ASCII \x1D)
+    // ==========================================
     document.getElementById("btnGenerate").addEventListener("click", () => {
       const currentJob = jobInput.value.trim();
       const jobLines = masterJobList.filter(item => String(item.jobNo) === String(currentJob));
@@ -989,6 +1303,9 @@
 
       showToast(`Exported ${currentData.msgRefNo}.egm`);
     });
+
+    initSystemData();
+    patchCurrentDates();
   </script>
 </body>
 </html>
