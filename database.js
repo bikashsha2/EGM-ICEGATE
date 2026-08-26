@@ -1,6 +1,6 @@
 // Initialize Supabase Client
-const SUPABASE_URL = "https://bsydixelligtrcbtcftr.supabase.co";
-const SUPABASE_KEY = "Ysb_publishable_5ZUgJzRoFA11S5NmEQ9RSw_sqWGS0qb";
+const SUPABASE_URL = "https://axctnkrxhbcnxdgqcgye.supabase.co";
+const SUPABASE_KEY = "sb_publishable_oII-gJgviZaaZFK6zMaGBA_bPTmtwGo";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 1. Production Login via Database
