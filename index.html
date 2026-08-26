@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BIKASH DEV EGM - Enterprise Edition</title>
+  <title>BIKASH EGM - Enterprise Multi-Tenant Edition</title>
   
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
@@ -111,6 +112,12 @@
       font-weight: 500;
     }
 
+    .badge-assigned {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
     .status-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
     .status-existing { background: #dbeafe; color: #1e40af; }
     .status-new { background: #dcfce7; color: #166534; }
@@ -132,6 +139,26 @@
     input:focus, select:focus, textarea:focus { border-color: var(--primary); }
     textarea { resize: vertical; min-height: 40px; }
 
+    .search-bar-container {
+      display: flex;
+      gap: 8px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .search-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 12px;
+      outline: none;
+    }
+
     .actions-bar { background: var(--surface-subtle); border-top: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
     .btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s ease; }
     .btn-default { background: #ffffff; border-color: var(--border); color: var(--text-main); }
@@ -145,8 +172,8 @@
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-primary { background: var(--primary); color: #fff; }
 
-    .master-list-section { padding: 0 24px 24px 24px; display: flex; flex-direction: column; gap: 10px; }
-    .table-wrapper { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #ffffff; }
+    .master-list-section { padding: 0 24px 24px 24px; display: flex; flex-direction: column; gap: 6px; }
+    .table-wrapper { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #ffffff; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
     th { background: #f8fafc; color: var(--text-muted); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
     td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
@@ -163,7 +190,7 @@
   <div class="login-container" id="loginScreen">
     <div style="text-align: center;">
       <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.02em;">BIKASH DEV EGM</h2>
-      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access EGM Portal</p>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access your Assigned Company Portal</p>
     </div>
     <form id="loginForm" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="form-group">
@@ -181,19 +208,18 @@
   <!-- 2. MAIN APPLICATION -->
   <div class="portal-container" id="portalScreen">
     
-    <!-- Top Navigation & Master Menu Header -->
+    <!-- Top Navigation Header -->
     <div class="header-bar">
       <div style="display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">BIKASH DEV EGM</span>
         <div class="nav-tabs">
           <button type="button" class="nav-tab active" onclick="switchTab('entryTab')">EGM Entry</button>
-          <button type="button" class="nav-tab" onclick="switchTab('masterTab')">Master Settings</button>
           <button type="button" class="nav-tab" id="adminNavBtn" onclick="switchTab('adminTab')">Admin Panel</button>
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge badge-assigned" id="assignedCompanyBadge">Assigned: —</span>
         <span class="badge" id="userBadge">User: —</span>
-        <button type="button" class="btn btn-default" id="btnInstallApp" style="display:none; padding: 4px 8px; font-size: 11px;">⬇ Install App</button>
         <button type="button" class="btn btn-default" id="btnLogout" style="padding: 4px 8px; font-size: 11px;">Logout</button>
       </div>
     </div>
@@ -203,7 +229,7 @@
       <form id="egmForm">
         <div class="form-layout">
           
-          <!-- Left Side: Manifest & Cargo Details -->
+          <!-- Left Column: Transport & Cargo -->
           <div style="display: flex; flex-direction: column; gap: 14px;">
             <div class="section-card">
               <div class="section-heading">Manifest & Transport Identification</div>
@@ -244,48 +270,42 @@
                   <input type="text" id="portOfLoading" value="INJIGB" required />
                 </div>
                 <div class="form-group">
-                  <label>Active ICEGATE ID</label>
-                  <input type="text" id="activeIcegateId" value="SUDIPAIRTRAX" required />
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
                   <label>
                     <span>SB No</span>
                     <span id="sbLockBadge" style="font-size: 10px; color: var(--text-muted);">Max 7 digits</span>
                   </label>
                   <input type="text" id="sbNo" maxlength="7" pattern="\d{1,7}" placeholder="E.G. 2018713" />
                 </div>
+              </div>
+
+              <div class="form-row">
                 <div class="form-group">
                   <label>SB Date</label>
                   <input type="date" id="sbDate" required />
                 </div>
-              </div>
-
-              <div class="form-row">
                 <div class="form-group">
                   <label>LR No</label>
                   <input type="text" id="lrNo" value="NIL" />
                 </div>
-                <div class="form-group">
-                  <label>LR Date</label>
-                  <input type="date" id="lrDate" required />
-                </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>
-                    <span>Vehicle No</span>
-                    <span id="vehicleLockBadge" style="font-size: 10px; color: var(--text-muted);">Vehicle #</span>
-                  </label>
-                  <input type="text" id="vehicleNo" placeholder="E.G. UP22BT-4613" />
+                  <label>LR Date</label>
+                  <input type="date" id="lrDate" required />
                 </div>
                 <div class="form-group">
                   <label>Reg. Country</label>
                   <input type="text" id="regCountry" value="IN" />
                 </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label>
+                  <span>Vehicle No</span>
+                  <span id="vehicleLockBadge" style="font-size: 10px; color: var(--text-muted);">Vehicle #</span>
+                </label>
+                <input type="text" id="vehicleNo" placeholder="E.G. UP22BT-4613" />
               </div>
             </div>
 
@@ -320,22 +340,8 @@
             </div>
           </div>
 
-          <!-- Right Side: Owner & Transporter -->
+          <!-- Right Column: Owner & Transporter -->
           <div style="display: flex; flex-direction: column; gap: 14px;">
-            <div class="section-card">
-              <div class="section-heading">Active Company / Branch Profile</div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Company Name</label>
-                  <input type="text" id="activeCompanyName" value="BIKASH DEV" />
-                </div>
-                <div class="form-group">
-                  <label>Branch / Office</label>
-                  <input type="text" id="activeBranchName" value="KOLKATA / JAIGAON BRANCH" />
-                </div>
-              </div>
-            </div>
-
             <div class="section-card">
               <div class="section-heading">Owner Details</div>
               <div class="form-group full-width">
@@ -398,8 +404,8 @@
         </div>
 
         <div class="actions-bar">
-          <button type="button" class="btn btn-success" id="btnSave">Save</button>
-          <button type="button" class="btn btn-cloud" id="btnCloudSave">Save to Cloud</button>
+          <button type="button" class="btn btn-success" id="btnSave">Save Line</button>
+          <button type="button" class="btn btn-cloud" id="btnCloudSave">Backup DB</button>
           <button type="button" class="btn btn-secondary" id="btnChecklistPDF">Download Checklist (PDF)</button>
           <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate to Fresh Job</button>
           <button type="reset" class="btn btn-default">Reset</button>
@@ -407,11 +413,19 @@
         </div>
       </form>
 
+      <!-- DATABASE SEARCH & MASTER TABLE -->
       <div class="master-list-section">
         <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Saved Lines / Manifest Master List</span>
+          <span>Database Explorer & Manifest Master List</span>
           <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total Lines: 0</span>
         </div>
+
+        <div class="search-bar-container">
+          <span style="font-size: 13px;">🔍</span>
+          <input type="text" id="databaseSearchInput" class="search-input" placeholder="SEARCH EXISTING JOBS BY SB NO, VEHICLE NO, OR JOB NO..." oninput="handleDatabaseSearch()" />
+          <button type="button" class="btn btn-default" onclick="clearSearch()" style="padding: 4px 10px;">Clear</button>
+        </div>
+
         <div class="table-wrapper">
           <table id="masterTable">
             <thead>
@@ -428,67 +442,24 @@
               </tr>
             </thead>
             <tbody id="masterTableBody">
-              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found in database.</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: MASTER SETTINGS -->
-    <div id="masterTab" class="tab-content">
-      <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
-        <div class="section-card">
-          <div class="section-heading">Master Broker / System Configuration</div>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-            Set your active company profile, default ICEGATE Sender ID, and default Port of Loading.
-          </p>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Select Saved Company Profile</label>
-              <select id="masterProfileSelect" onchange="applySelectedCompanyProfile()">
-                <!-- Populated Dynamically -->
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Default ICEGATE ID</label>
-              <input type="text" id="masterIcegateId" value="SUDIPAIRTRAX" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Default Company Name</label>
-              <input type="text" id="masterCompanyName" value="BIKASH DEV" />
-            </div>
-            <div class="form-group">
-              <label>Default Branch / Location</label>
-              <input type="text" id="masterBranchName" value="KOLKATA / JAIGAON BRANCH" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Default Port of Loading</label>
-              <input type="text" id="masterPort" value="INJIGB" />
-            </div>
-            <div class="form-group" style="justify-content: flex-end;">
-              <button type="button" class="btn btn-primary" onclick="saveMasterSettings()" style="height: 34px;">Save & Apply Settings</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 3: ADMIN PANEL -->
+    <!-- TAB 2: ADMIN PANEL (USER-WISE COMPANY & ICEGATE ID ASSIGNMENTS) -->
     <div id="adminTab" class="tab-content">
       <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         
-        <!-- Left: Add Company Master -->
+        <!-- Left: Company Management Master -->
         <div class="section-card">
-          <div class="section-heading">Add / Manage Company Profiles</div>
+          <div class="section-heading">Register Company & ICEGATE Profiles</div>
           <form id="addCompanyForm" style="display: flex; flex-direction: column; gap: 10px;">
             <div class="form-group">
               <label>Company Name</label>
-              <input type="text" id="newCompanyName" placeholder="E.G. BIKASH DEV" required />
+              <input type="text" id="newCompanyName" placeholder="E.G. BIKASH DEV LOGISTICS" required />
             </div>
             <div class="form-group">
               <label>Branch Name</label>
@@ -499,14 +470,14 @@
               <input type="text" id="newIcegateId" placeholder="E.G. SUDIPAIRTRAX" required />
             </div>
             <div class="form-group">
-              <label>Default Port Code</label>
+              <label>Port of Loading</label>
               <input type="text" id="newPortCode" value="INJIGB" required />
             </div>
-            <button type="submit" class="btn btn-success" style="height: 34px; margin-top: 6px;">+ Add Company Profile</button>
+            <button type="submit" class="btn btn-success" style="height: 34px; margin-top: 6px;">+ Add Company to Database</button>
           </form>
 
-          <div class="section-heading" style="margin-top: 10px;">Registered Companies</div>
-          <div class="table-wrapper" style="max-height: 140px;">
+          <div class="section-heading" style="margin-top: 10px;">Registered Company Profiles</div>
+          <div class="table-wrapper" style="max-height: 150px;">
             <table>
               <thead>
                 <tr>
@@ -521,34 +492,41 @@
           </div>
         </div>
 
-        <!-- Right: Add User Master -->
+        <!-- Right: User Management with User-Wise Company Assignment -->
         <div class="section-card">
-          <div class="section-heading">Add / Manage User Credentials</div>
+          <div class="section-heading">Register Users & Assign Company</div>
           <form id="addUserForm" style="display: flex; flex-direction: column; gap: 10px;">
             <div class="form-group">
-              <label>Username / Operator ID</label>
-              <input type="text" id="newUsername" placeholder="E.G. OPERATOR_01" required />
+              <label>Operator / User ID</label>
+              <input type="text" id="newUsername" placeholder="E.G. USER_A" required />
             </div>
             <div class="form-group">
               <label>Password</label>
               <input type="password" id="newPassword" placeholder="••••••••" style="text-transform: none;" required />
             </div>
             <div class="form-group">
-              <label>User Role</label>
+              <label>Assign Company & ICEGATE ID</label>
+              <select id="newUserAssignedCompanyId" required>
+                <!-- Populated dynamically from Registered Companies -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Role</label>
               <select id="newUserRole">
-                <option value="OPERATOR">Operator (Standard Entry)</option>
+                <option value="OPERATOR">Operator (Scoped to Assigned Company)</option>
                 <option value="ADMIN">Admin (Full Control)</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="height: 34px; margin-top: 6px;">+ Register User</button>
+            <button type="submit" class="btn btn-primary" style="height: 34px; margin-top: 6px;">+ Register & Assign User</button>
           </form>
 
-          <div class="section-heading" style="margin-top: 10px;">System Users</div>
-          <div class="table-wrapper" style="max-height: 140px;">
+          <div class="section-heading" style="margin-top: 10px;">Users & Assigned Companies</div>
+          <div class="table-wrapper" style="max-height: 150px;">
             <table>
               <thead>
                 <tr>
-                  <th>Username</th>
+                  <th>User</th>
+                  <th>Assigned Company (ICEGATE ID)</th>
                   <th>Role</th>
                   <th>Action</th>
                 </tr>
@@ -569,33 +547,71 @@
     const GS = String.fromCharCode(29);
     const EOR = "\n";
     let masterJobList = [];
+    let filteredJobList = [];
 
     // Master Storage Initializers
     let companiesMaster = [
-      { id: "1", name: "BIKASH DEV", branch: "KOLKATA / JAIGAON BRANCH", icegateId: "SUDIPAIRTRAX", port: "INJIGB" }
+      { id: "comp_1", name: "BIKASH DEV", branch: "KOLKATA / JAIGAON BRANCH", icegateId: "SUDIPAIRTRAX", port: "INJIGB" },
+      { id: "comp_2", name: "ROYAL LOGISTICS", branch: "PHUENTSHOLING BORDER", icegateId: "ROYALEXP99", port: "INJIGB" }
     ];
 
     let usersMaster = [
-      { username: "ADMIN", role: "ADMIN", pass: "admin123" },
-      { username: "OPERATOR", role: "OPERATOR", pass: "op123" }
+      { username: "ADMIN", role: "ADMIN", pass: "admin123", assignedCompanyId: "comp_1" },
+      { username: "USER_A", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_1" },
+      { username: "USER_B", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_2" }
     ];
 
     let currentLoggedInUser = null;
 
     function initSystemData() {
-      const savedCompanies = localStorage.getItem("ICEGATE_COMPANIES");
+      const savedCompanies = localStorage.getItem("BIKASH_EGM_COMPANIES");
       if (savedCompanies) companiesMaster = JSON.parse(savedCompanies);
 
-      const savedUsers = localStorage.getItem("ICEGATE_USERS");
+      const savedUsers = localStorage.getItem("BIKASH_EGM_USERS");
       if (savedUsers) usersMaster = JSON.parse(savedUsers);
 
-      const savedJobs = localStorage.getItem("ICEGATE_EGM_MASTER_LIST");
-      if (savedJobs) masterJobList = JSON.parse(savedJobs);
+      const savedJobs = localStorage.getItem("BIKASH_EGM_DATABASE");
+      if (savedJobs) {
+        masterJobList = JSON.parse(savedJobs);
+        filteredJobList = [...masterJobList];
+      }
 
       renderCompanyProfiles();
       renderUsersTable();
+      populateCompanyDropdownForUsers();
       renderMasterList();
-      populateMasterDropdown();
+    }
+
+    // Retrieve the exact company profile assigned to the currently logged in user
+    function getAssignedCompanyForCurrentUser() {
+      if (!currentLoggedInUser) return companiesMaster[0];
+      const assigned = companiesMaster.find(c => c.id === currentLoggedInUser.assignedCompanyId);
+      return assigned || companiesMaster[0];
+    }
+
+    function updateAssignedCompanyBadge() {
+      const assigned = getAssignedCompanyForCurrentUser();
+      if (assigned) {
+        document.getElementById("assignedCompanyBadge").textContent = `Assigned: ${assigned.name} (${assigned.icegateId})`;
+        document.getElementById("portOfLoading").value = assigned.port || "INJIGB";
+      }
+    }
+
+    function populateCompanyDropdownForUsers() {
+      const dropdown = document.getElementById("newUserAssignedCompanyId");
+      dropdown.innerHTML = companiesMaster.map(c => `
+        <option value="${c.id}">${c.name} - ${c.branch} (${c.icegateId})</option>
+      `).join("");
+    }
+
+    function getNextSequentialJobNumber() {
+      if (masterJobList.length === 0) return 1;
+      const occupiedJobs = [...new Set(masterJobList.map(j => parseInt(j.jobNo, 10) || 0))].sort((a, b) => a - b);
+      let nextSeq = 1;
+      while (occupiedJobs.includes(nextSeq)) {
+        nextSeq++;
+      }
+      return nextSeq;
     }
 
     window.switchTab = function(tabId) {
@@ -647,7 +663,7 @@
     });
 
     // ==========================================
-    // AUTHENTICATION & LOGIN
+    // USER-WISE LOGIN & AUTOMATIC ASSIGNMENT
     // ==========================================
     document.getElementById("loginForm").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -658,19 +674,23 @@
 
       if (matched) {
         currentLoggedInUser = matched;
+        const userCompany = getAssignedCompanyForCurrentUser();
+
         document.getElementById("userBadge").textContent = `${matched.username} (${matched.role})`;
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("portalScreen").style.display = "flex";
 
         const adminBtn = document.getElementById("adminNavBtn");
-        if (matched.role !== "ADMIN") {
-          adminBtn.style.display = "none";
-        } else {
-          adminBtn.style.display = "block";
-        }
+        adminBtn.style.display = matched.role === "ADMIN" ? "block" : "none";
 
+        updateAssignedCompanyBadge();
         switchTab("entryTab");
-        showToast(`Signed in as ${matched.username}`);
+
+        const nextAvailable = getNextSequentialJobNumber();
+        jobInput.value = nextAvailable;
+        handleRealTimeSync();
+
+        showToast(`Welcome ${matched.username}! Working for: ${userCompany.name} (${userCompany.icegateId})`);
       } else {
         alert("Invalid Username or Password.");
       }
@@ -684,48 +704,12 @@
     });
 
     // ==========================================
-    // MASTER SETTINGS & COMPANY PROFILES
-    // ==========================================
-    function populateMasterDropdown() {
-      const select = document.getElementById("masterProfileSelect");
-      select.innerHTML = companiesMaster.map(c => `
-        <option value="${c.id}">${c.name} - ${c.branch} (${c.icegateId})</option>
-      `).join("");
-    }
-
-    window.applySelectedCompanyProfile = function() {
-      const selectedId = document.getElementById("masterProfileSelect").value;
-      const comp = companiesMaster.find(c => c.id === selectedId);
-      if (comp) {
-        document.getElementById("masterCompanyName").value = comp.name;
-        document.getElementById("masterBranchName").value = comp.branch;
-        document.getElementById("masterIcegateId").value = comp.icegateId;
-        document.getElementById("masterPort").value = comp.port;
-      }
-    };
-
-    window.saveMasterSettings = function() {
-      const name = document.getElementById("masterCompanyName").value.toUpperCase();
-      const branch = document.getElementById("masterBranchName").value.toUpperCase();
-      const icegate = document.getElementById("masterIcegateId").value.toUpperCase();
-      const port = document.getElementById("masterPort").value.toUpperCase();
-
-      document.getElementById("activeCompanyName").value = name;
-      document.getElementById("activeBranchName").value = branch;
-      document.getElementById("activeIcegateId").value = icegate;
-      document.getElementById("portOfLoading").value = port;
-
-      showToast("Master Settings applied to Active Manifest.");
-      switchTab("entryTab");
-    };
-
-    // ==========================================
-    // ADMIN PANEL
+    // ADMIN PANEL: COMPANY & USER MANAGEMENT
     // ==========================================
     document.getElementById("addCompanyForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const newComp = {
-        id: String(Date.now()),
+        id: "comp_" + String(Date.now()),
         name: document.getElementById("newCompanyName").value.trim().toUpperCase(),
         branch: document.getElementById("newBranchName").value.trim().toUpperCase(),
         icegateId: document.getElementById("newIcegateId").value.trim().toUpperCase(),
@@ -733,9 +717,9 @@
       };
 
       companiesMaster.push(newComp);
-      localStorage.setItem("ICEGATE_COMPANIES", JSON.stringify(companiesMaster));
+      saveAdminDatabase();
       renderCompanyProfiles();
-      populateMasterDropdown();
+      populateCompanyDropdownForUsers();
       document.getElementById("addCompanyForm").reset();
       showToast(`Company '${newComp.name}' registered.`);
     });
@@ -746,7 +730,7 @@
         <tr>
           <td><strong>${c.name}</strong></td>
           <td>${c.branch}</td>
-          <td>${c.icegateId}</td>
+          <td><span class="badge">${c.icegateId}</span></td>
           <td>
             <button type="button" class="btn btn-danger table-btn" onclick="deleteCompany(${idx})">✕</button>
           </td>
@@ -756,60 +740,151 @@
 
     window.deleteCompany = function(index) {
       if (companiesMaster.length <= 1) {
-        alert("Must retain at least one default company.");
+        alert("Must retain at least one company in database.");
         return;
       }
-      if (confirm("Delete this company profile?")) {
+      if (confirm("Delete this company profile? Users assigned to it will fallback to default.")) {
+        const deletedCompId = companiesMaster[index].id;
         companiesMaster.splice(index, 1);
-        localStorage.setItem("ICEGATE_COMPANIES", JSON.stringify(companiesMaster));
+        
+        // Re-assign orphaned users to first available company
+        usersMaster.forEach(u => {
+          if (u.assignedCompanyId === deletedCompId) {
+            u.assignedCompanyId = companiesMaster[0].id;
+          }
+        });
+
+        saveAdminDatabase();
         renderCompanyProfiles();
-        populateMasterDropdown();
+        renderUsersTable();
+        populateCompanyDropdownForUsers();
+        updateAssignedCompanyBadge();
       }
     };
 
     document.getElementById("addUserForm").addEventListener("submit", (e) => {
       e.preventDefault();
-      const newUser = {
-        username: document.getElementById("newUsername").value.trim().toUpperCase(),
-        pass: document.getElementById("newPassword").value,
-        role: document.getElementById("newUserRole").value
-      };
+      const username = document.getElementById("newUsername").value.trim().toUpperCase();
+      const pass = document.getElementById("newPassword").value;
+      const assignedCompanyId = document.getElementById("newUserAssignedCompanyId").value;
+      const role = document.getElementById("newUserRole").value;
 
-      if (usersMaster.find(u => u.username === newUser.username)) {
-        alert("Username already exists.");
+      if (usersMaster.find(u => u.username === username)) {
+        alert("Username already exists in database.");
         return;
       }
 
+      const newUser = { username, pass, role, assignedCompanyId };
       usersMaster.push(newUser);
-      localStorage.setItem("ICEGATE_USERS", JSON.stringify(usersMaster));
+      saveAdminDatabase();
       renderUsersTable();
       document.getElementById("addUserForm").reset();
-      showToast(`User '${newUser.username}' created.`);
+      
+      const comp = companiesMaster.find(c => c.id === assignedCompanyId);
+      showToast(`User '${newUser.username}' assigned to '${comp ? comp.name : ""}'`);
     });
 
     function renderUsersTable() {
       const tbody = document.getElementById("userTableBody");
-      tbody.innerHTML = usersMaster.map((u, idx) => `
+      tbody.innerHTML = usersMaster.map((u, idx) => {
+        const comp = companiesMaster.find(c => c.id === u.assignedCompanyId);
+        const compLabel = comp ? `${comp.name} (${comp.icegateId})` : "Default Profile";
+        return `
+          <tr>
+            <td><strong>${u.username}</strong></td>
+            <td>
+              <select onchange="updateUserCompanyAssignment(${idx}, this.value)" style="padding: 2px 4px; font-size: 11px;">
+                ${companiesMaster.map(c => `
+                  <option value="${c.id}" ${c.id === u.assignedCompanyId ? 'selected' : ''}>${c.name} (${c.icegateId})</option>
+                `).join("")}
+              </select>
+            </td>
+            <td><span class="badge">${u.role}</span></td>
+            <td>
+              ${u.username === 'ADMIN' ? '—' : `<button type="button" class="btn btn-danger table-btn" onclick="deleteUser(${idx})">✕</button>`}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    window.updateUserCompanyAssignment = function(userIndex, newCompanyId) {
+      usersMaster[userIndex].assignedCompanyId = newCompanyId;
+      saveAdminDatabase();
+      const user = usersMaster[userIndex];
+      const comp = companiesMaster.find(c => c.id === newCompanyId);
+      if (currentLoggedInUser && currentLoggedInUser.username === user.username) {
+        currentLoggedInUser.assignedCompanyId = newCompanyId;
+        updateAssignedCompanyBadge();
+      }
+      showToast(`Reassigned ${user.username} to ${comp.name}`);
+    };
+
+    window.deleteUser = function(index) {
+      if (confirm("Delete this user?")) {
+        usersMaster.splice(index, 1);
+        saveAdminDatabase();
+        renderUsersTable();
+      }
+    };
+
+    function saveAdminDatabase() {
+      localStorage.setItem("BIKASH_EGM_COMPANIES", JSON.stringify(companiesMaster));
+      localStorage.setItem("BIKASH_EGM_USERS", JSON.stringify(usersMaster));
+    }
+
+    // ==========================================
+    // DATABASE EXPLORER & SEARCH SYSTEM
+    // ==========================================
+    window.handleDatabaseSearch = function() {
+      const query = document.getElementById("databaseSearchInput").value.trim().toUpperCase();
+      if (!query) {
+        filteredJobList = [...masterJobList];
+      } else {
+        filteredJobList = masterJobList.filter(item => 
+          (item.sbNo && item.sbNo.toUpperCase().includes(query)) ||
+          (item.vehicleNo && item.vehicleNo.toUpperCase().includes(query)) ||
+          (String(item.jobNo).includes(query))
+        );
+      }
+      renderMasterList();
+    };
+
+    window.clearSearch = function() {
+      document.getElementById("databaseSearchInput").value = "";
+      filteredJobList = [...masterJobList];
+      renderMasterList();
+    };
+
+    function renderMasterList() {
+      const tbody = document.getElementById("masterTableBody");
+      document.getElementById("jobCountLabel").textContent = `Total Saved: ${masterJobList.length} (Showing: ${filteredJobList.length})`;
+      
+      if (filteredJobList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No matching records found in database.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filteredJobList.map((item) => `
         <tr>
-          <td><strong>${u.username}</strong></td>
-          <td><span class="badge">${u.role}</span></td>
-          <td>
-            ${u.username === 'ADMIN' ? '—' : `<button type="button" class="btn btn-danger table-btn" onclick="deleteUser(${idx})">✕</button>`}
+          <td><strong>#${item.jobNo}</strong></td>
+          <td><span class="badge" style="background:#e0e7ff; color:#3730a3; border:none;">SI ${item.siNo}</span></td>
+          <td>${item.vehicleNo || '—'}</td>
+          <td><strong>${item.sbNo || '—'}</strong></td>
+          <td>${item.lrNo || '—'}</td>
+          <td>${item.noOfPkgs || '—'}</td>
+          <td>${item.quantity ? `${item.quantity} ${item.unit}` : '—'}</td>
+          <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || 'API'}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-default table-btn" onclick="editLineById('${item.jobNo}', '${item.siNo}')">Edit</button>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteLineById('${item.jobNo}', '${item.siNo}')">Delete</button>
           </td>
         </tr>
       `).join("");
     }
 
-    window.deleteUser = function(index) {
-      if (confirm("Delete this user?")) {
-        usersMaster.splice(index, 1);
-        localStorage.setItem("ICEGATE_USERS", JSON.stringify(usersMaster));
-        renderUsersTable();
-      }
-    };
-
     // ==========================================
-    // EGM ENTRY FORM LOGIC
+    // EGM ENTRY FORM ENGINE
     // ==========================================
     function getFormData() {
       const val = (id) => (document.getElementById(id).value || "").trim().toUpperCase();
@@ -819,18 +894,21 @@
       const job = val("jobNo");
       const siNo = val("siNo") || "1";
       
+      // Pull the assigned company details bound to the current logged-in user
+      const userAssignedComp = getAssignedCompanyForCurrentUser();
+      
       const paddedJob = String(job).padStart(2, "0");
       const msgRefNo = `${paddedJob}${port}${jobDateFormatted.slice(6,8)}${jobDateFormatted.slice(4,6)}${jobDateFormatted.slice(0,4)}`;
 
       return {
-        companyName: val("activeCompanyName") || "BIKASH DEV",
-        branchName: val("activeBranchName") || "MAIN BRANCH",
+        companyName: userAssignedComp.name,
+        branchName: userAssignedComp.branch,
+        icegateId: userAssignedComp.icegateId,
         jobNo: job,
         siNo: siNo,
         shippingMode: document.getElementById("shippingMode").value,
         jobDate: rawJobDate,
         jobDateFormatted: jobDateFormatted,
-        icegateId: val("activeIcegateId"),
         portOfLoading: port,
         sbNo: val("sbNo"),
         sbDate: document.getElementById("sbDate").value,
@@ -861,11 +939,8 @@
 
     function populateForm(data) {
       document.getElementById("shippingMode").value = data.shippingMode || "Multiple Shipping Mode";
-      if (data.companyName) document.getElementById("activeCompanyName").value = data.companyName.toUpperCase();
-      if (data.branchName) document.getElementById("activeBranchName").value = data.branchName.toUpperCase();
       document.getElementById("jobDate").value = data.jobDate || getTodayDate();
       document.getElementById("portOfLoading").value = (data.portOfLoading || "INJIGB").toUpperCase();
-      document.getElementById("activeIcegateId").value = (data.icegateId || "SUDIPAIRTRAX").toUpperCase();
       document.getElementById("sbNo").value = (data.sbNo || "").slice(0, 7).toUpperCase();
       document.getElementById("sbDate").value = data.sbDate || getTodayDate();
       document.getElementById("lrNo").value = (data.lrNo || "NIL").toUpperCase();
@@ -1010,36 +1085,35 @@
       applyModeRules(enteredJob, enteredSi);
     }
 
-    jobInput.addEventListener("input", handleRealTimeSync);
-    siInput.addEventListener("input", handleRealTimeSync);
-    shippingModeSelect.addEventListener("change", handleRealTimeSync);
+    function enforceSequentialJobRedirect() {
+      const enteredJobNum = parseInt(jobInput.value, 10);
+      if (!enteredJobNum || isNaN(enteredJobNum)) return;
 
-    function renderMasterList() {
-      const tbody = document.getElementById("masterTableBody");
-      document.getElementById("jobCountLabel").textContent = `Total Lines: ${masterJobList.length}`;
-      
-      if (masterJobList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found.</td></tr>`;
+      const occupiedJobs = [...new Set(masterJobList.map(j => parseInt(j.jobNo, 10) || 0))];
+
+      if (occupiedJobs.includes(enteredJobNum)) {
+        handleRealTimeSync();
         return;
       }
 
-      tbody.innerHTML = masterJobList.map((item, idx) => `
-        <tr>
-          <td><strong>#${item.jobNo}</strong></td>
-          <td><span class="badge" style="background:#e0e7ff; color:#3730a3; border:none;">SI ${item.siNo}</span></td>
-          <td>${item.vehicleNo || '—'}</td>
-          <td><strong>${item.sbNo || '—'}</strong></td>
-          <td>${item.lrNo || '—'}</td>
-          <td>${item.noOfPkgs || '—'}</td>
-          <td>${item.quantity ? `${item.quantity} ${item.unit}` : '—'}</td>
-          <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || 'API'}</td>
-          <td style="text-align: right; white-space: nowrap;">
-            <button type="button" class="btn btn-default table-btn" onclick="editLine(${idx})">Edit</button>
-            <button type="button" class="btn btn-danger table-btn" onclick="deleteLine(${idx})">Delete</button>
-          </td>
-        </tr>
-      `).join("");
+      const nextContinuousSeq = getNextSequentialJobNumber();
+
+      if (enteredJobNum > nextContinuousSeq) {
+        jobInput.value = nextContinuousSeq;
+        siInput.value = 1;
+        showToast(`Job #${enteredJobNum} redirected to next sequential Job #${nextContinuousSeq}`);
+        handleRealTimeSync();
+      } else {
+        handleRealTimeSync();
+      }
     }
+
+    jobInput.addEventListener("input", handleRealTimeSync);
+    jobInput.addEventListener("change", enforceSequentialJobRedirect);
+    jobInput.addEventListener("blur", enforceSequentialJobRedirect);
+
+    siInput.addEventListener("input", handleRealTimeSync);
+    shippingModeSelect.addEventListener("change", handleRealTimeSync);
 
     document.getElementById("btnSave").addEventListener("click", () => {
       const data = getFormData();
@@ -1065,25 +1139,22 @@
         showToast(`Saved: Job #${data.jobNo} Line ${data.siNo} added.`);
       }
 
-      localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
-      renderMasterList();
+      localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
+      handleDatabaseSearch();
       handleRealTimeSync();
     });
 
     document.getElementById("btnCloudSave").addEventListener("click", () => {
       if (masterJobList.length === 0) {
-        showToast("No records available to save.");
+        showToast("No database records to backup.");
         return;
       }
-      localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
-      showToast("Master Records backed up to Local/Cloud Storage.");
+      localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
+      showToast("Database safely backed up to storage.");
     });
 
     document.getElementById("btnDuplicateFreshJob").addEventListener("click", () => {
-      const existingJobNumbers = masterJobList.map(j => parseInt(j.jobNo, 10) || 0);
-      const currentInputJob = parseInt(jobInput.value, 10) || 0;
-      const maxJob = existingJobNumbers.length > 0 ? Math.max(...existingJobNumbers, currentInputJob) : currentInputJob;
-      const nextFreshJob = maxJob + 1;
+      const nextFreshJob = getNextSequentialJobNumber();
 
       jobInput.value = nextFreshJob;
       siInput.value = 1;
@@ -1097,11 +1168,11 @@
       vehicleInput.readOnly = false;
       sbInput.readOnly = false;
 
-      showToast(`Duplicated to Fresh Job #${nextFreshJob}`);
+      showToast(`Duplicated to next continuous Job #${nextFreshJob}`);
     });
 
-    window.editLine = function(index) {
-      const item = masterJobList[index];
+    window.editLineById = function(jobNo, siNo) {
+      const item = masterJobList.find(i => String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
       if (!item) return;
       jobInput.value = item.jobNo;
       siInput.value = item.siNo;
@@ -1110,19 +1181,20 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.deleteLine = function(index) {
-      const item = masterJobList[index];
-      if (confirm(`Remove Job #${item.jobNo} Line ${item.siNo}?`)) {
-        masterJobList.splice(index, 1);
-        localStorage.setItem("ICEGATE_EGM_MASTER_LIST", JSON.stringify(masterJobList));
-        renderMasterList();
+    window.deleteLineById = function(jobNo, siNo) {
+      const idx = masterJobList.findIndex(i => String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
+      if (idx === -1) return;
+      if (confirm(`Remove Job #${jobNo} Line ${siNo}?`)) {
+        masterJobList.splice(idx, 1);
+        localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
+        handleDatabaseSearch();
         handleRealTimeSync();
-        showToast(`Removed Line ${item.siNo}`);
+        showToast(`Removed Line ${siNo}`);
       }
     };
 
     // ==========================================
-    // STANDARD / NORMAL OFFICIAL PDF CHECKLIST
+    // PDF CHECKLIST WITH LOGGED-IN USER'S COMPANY
     // ==========================================
     document.getElementById("btnChecklistPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
@@ -1133,14 +1205,13 @@
       const activeData = getFormData();
       const modeTitle = activeData.shippingMode === "Multiple Shipping Mode" ? "MULTIPLE SHIPPING" : "MULTIPLE TRUCK";
 
-      // 1. Official Standard Header
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(13);
-      doc.text((activeData.companyName || "BIKASH DEV").toUpperCase(), 105, 14, { align: "center" });
+      doc.text(activeData.companyName.toUpperCase(), 105, 14, { align: "center" });
 
       doc.setFont("Helvetica", "normal");
       doc.setFontSize(9);
-      doc.text(`BRANCH: ${(activeData.branchName || "MAIN BRANCH").toUpperCase()}`, 105, 19, { align: "center" });
+      doc.text(`BRANCH: ${activeData.branchName.toUpperCase()}`, 105, 19, { align: "center" });
 
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(10);
@@ -1149,7 +1220,6 @@
       doc.setLineWidth(0.3);
       doc.line(14, 28, 196, 28);
 
-      // 2. Standard Metadata Box
       doc.autoTable({
         startY: 31,
         theme: "plain",
@@ -1173,7 +1243,6 @@
         ]
       });
 
-      // 3. Official Standard Itemized Table
       const tableData = jobLines.length > 0 
         ? jobLines.map(line => [
             line.siNo, 
@@ -1225,7 +1294,6 @@
         }
       });
 
-      // 4. Sign-off Footer
       let finalY = doc.lastAutoTable.finalY + 28;
       if (finalY > 260) {
         doc.addPage();
@@ -1241,11 +1309,11 @@
       doc.text("Signature of Customs Officer", 136, finalY + 5);
 
       doc.save(`Checklist_Job_${currentJob}.pdf`);
-      showToast(`Downloaded Standard Checklist PDF for Job #${currentJob}`);
+      showToast(`Downloaded Checklist PDF for Job #${currentJob}`);
     });
 
     // ==========================================
-    // FLATFILE .EGM GENERATOR (ASCII \x1D)
+    // FLATFILE .EGM GENERATOR (USER'S ICEGATE ID)
     // ==========================================
     document.getElementById("btnGenerate").addEventListener("click", () => {
       const currentJob = jobInput.value.trim();
@@ -1301,7 +1369,7 @@
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
 
-      showToast(`Exported ${currentData.msgRefNo}.egm`);
+      showToast(`Exported ${currentData.msgRefNo}.egm using ${currentData.icegateId}`);
     });
 
     initSystemData();
