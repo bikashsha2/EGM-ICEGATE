@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BIKASH EGM - Enterprise Multi-Tenant Edition</title>
+  <title>BIKASH DEV EGM & IGM - Enterprise Edition</title>
   
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
+  <!-- Supabase JS Client for Cloud Database Integration -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- PDF Generation Engines -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
@@ -112,7 +115,7 @@
       font-weight: 500;
     }
 
-    .badge-assigned {
+    .badge-tenant {
       background: rgba(16, 185, 129, 0.2);
       color: #34d399;
       border: 1px solid rgba(52, 211, 153, 0.3);
@@ -167,8 +170,6 @@
     .btn-secondary:hover { background: var(--secondary-hover); }
     .btn-success { background: var(--success); color: #fff; }
     .btn-success:hover { background: var(--success-hover); }
-    .btn-cloud { background: var(--cloud); color: #fff; }
-    .btn-cloud:hover { background: var(--cloud-hover); }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-primary { background: var(--primary); color: #fff; }
 
@@ -180,6 +181,48 @@
     tr:hover td { background: #f1f5f9; }
     .table-btn { padding: 3px 8px; font-size: 11px; margin-right: 4px; }
 
+    /* Modal / Pop-up Engine */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 3000;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .modal-header {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .modal-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
     .notification { position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #ffffff; padding: 12px 18px; border-radius: 6px; font-size: 13px; box-shadow: var(--shadow-lg); transform: translateY(100px); opacity: 0; transition: all 0.25s ease; z-index: 2000; }
     .notification.show { transform: translateY(0); opacity: 1; }
   </style>
@@ -189,13 +232,13 @@
   <!-- 1. LOGIN SCREEN -->
   <div class="login-container" id="loginScreen">
     <div style="text-align: center;">
-      <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.02em;">BIKASH DEV EGM</h2>
-      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to access your Assigned Company Portal</p>
+      <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.02em;">BIKASH DEV EGM & IGM</h2>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Sign in to your customs manifest environment</p>
     </div>
     <form id="loginForm" style="display: flex; flex-direction: column; gap: 14px;">
       <div class="form-group">
-        <label>Operator / User ID</label>
-        <input type="text" id="username" placeholder="ENTER OPERATOR ID" required autocomplete="username" />
+        <label>User ID</label>
+        <input type="text" id="username" placeholder="ENTER USERNAME" required autocomplete="username" />
       </div>
       <div class="form-group">
         <label>Password</label>
@@ -208,36 +251,42 @@
   <!-- 2. MAIN APPLICATION -->
   <div class="portal-container" id="portalScreen">
     
-    <!-- Top Navigation Header -->
+    <!-- Top Header -->
     <div class="header-bar">
       <div style="display: flex; align-items: center; gap: 12px;">
-        <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">BIKASH DEV EGM</span>
+        <span style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em;">BIKASH DEV</span>
         <div class="nav-tabs">
-          <button type="button" class="nav-tab active" onclick="switchTab('entryTab')">EGM Entry</button>
+          <button type="button" class="nav-tab active" onclick="switchTab('egmTab')">EGM Entry</button>
+          <button type="button" class="nav-tab" onclick="switchTab('igmTab')">IGM Entry (Import)</button>
           <button type="button" class="nav-tab" id="adminNavBtn" onclick="switchTab('adminTab')">Admin Panel</button>
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span class="badge badge-assigned" id="assignedCompanyBadge">Assigned: —</span>
+        <span class="badge badge-tenant" id="assignedCompanyBadge">Tenant: —</span>
         <span class="badge" id="userBadge">User: —</span>
         <button type="button" class="btn btn-default" id="btnLogout" style="padding: 4px 8px; font-size: 11px;">Logout</button>
       </div>
     </div>
 
-    <!-- TAB 1: EGM ENTRY SCREEN -->
-    <div id="entryTab" class="tab-content active">
+    <!-- TAB 1: EGM ENTRY -->
+    <div id="egmTab" class="tab-content active">
       <form id="egmForm">
         <div class="form-layout">
-          
-          <!-- Left Column: Transport & Cargo -->
+          <!-- Left Column -->
           <div style="display: flex; flex-direction: column; gap: 14px;">
             <div class="section-card">
-              <div class="section-heading">Manifest & Transport Identification</div>
+              <div class="section-heading">Manifest & Transport Identification (Export)</div>
+              <div class="form-row" id="adminEgmCompanyRow" style="display: none; background: #e0f2fe; padding: 6px; border-radius: 6px; border: 1px solid #bae6fd;">
+                <div class="form-group full-width">
+                  <label style="color: #0369a1; font-weight: 700;">Working Company (Admin Override):</label>
+                  <select id="adminEgmCompanySelect" onchange="handleAdminCompanySwitch(this.value)" style="border-color: #0284c7;"></select>
+                </div>
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>
                     <span>Job No</span>
-                    <span id="jobStatusBadge" class="status-badge status-new">New Entry</span>
+                    <span id="egmJobStatusBadge" class="status-badge status-new">New Entry</span>
                   </label>
                   <input type="number" id="jobNo" value="1" min="1" required />
                 </div>
@@ -246,7 +295,6 @@
                   <input type="date" id="jobDate" required />
                 </div>
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>Mode</label>
@@ -263,7 +311,6 @@
                   <input type="number" id="siNo" value="1" min="1" required />
                 </div>
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>Port of Loading</label>
@@ -277,7 +324,6 @@
                   <input type="text" id="sbNo" maxlength="7" pattern="\d{1,7}" placeholder="E.G. 2018713" />
                 </div>
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>SB Date</label>
@@ -288,7 +334,6 @@
                   <input type="text" id="lrNo" value="NIL" />
                 </div>
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>LR Date</label>
@@ -299,7 +344,6 @@
                   <input type="text" id="regCountry" value="IN" />
                 </div>
               </div>
-
               <div class="form-group full-width">
                 <label>
                   <span>Vehicle No</span>
@@ -309,7 +353,6 @@
               </div>
             </div>
 
-            <!-- Cargo Specification -->
             <div class="section-card">
               <div class="section-heading">Cargo Specification</div>
               <div class="form-row">
@@ -322,17 +365,14 @@
                   <input type="text" id="quantity" />
                 </div>
               </div>
-
               <div class="form-group full-width">
                 <label>Unit of Measure</label>
                 <input type="text" id="unit" value="KGS" />
               </div>
-
               <div class="form-group full-width">
                 <label>Marks & Numbers</label>
                 <textarea id="marksNos">API</textarea>
               </div>
-
               <div class="form-group full-width">
                 <label>Description of Goods</label>
                 <textarea id="description">API</textarea>
@@ -340,7 +380,7 @@
             </div>
           </div>
 
-          <!-- Right Column: Owner & Transporter -->
+          <!-- Right Column -->
           <div style="display: flex; flex-direction: column; gap: 14px;">
             <div class="section-card">
               <div class="section-heading">Owner Details</div>
@@ -400,36 +440,35 @@
               </div>
             </div>
           </div>
-
         </div>
 
         <div class="actions-bar">
-          <button type="button" class="btn btn-success" id="btnSave">Save Line</button>
-          <button type="button" class="btn btn-cloud" id="btnCloudSave">Backup DB</button>
+          <button type="button" class="btn btn-success" id="btnSaveEgm">Save</button>
           <button type="button" class="btn btn-secondary" id="btnChecklistPDF">Download Checklist (PDF)</button>
-          <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate to Fresh Job</button>
-          <button type="reset" class="btn btn-default">Reset</button>
-          <button type="button" class="btn btn-primary" id="btnGenerate">Generate FlatFile (.egm)</button>
+          <button type="button" class="btn btn-default" id="btnDuplicateFreshJob">Duplicate</button>
+          <button type="button" class="btn btn-primary" id="btnGenerateEgm">Generate FlatFile (.egm)</button>
         </div>
       </form>
 
-      <!-- DATABASE SEARCH & MASTER TABLE -->
+      <!-- EGM DATABASE EXPLORER -->
       <div class="master-list-section">
         <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Database Explorer & Manifest Master List</span>
-          <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total Lines: 0</span>
+          <span id="tableHeaderEgmTitle">EGM Database Explorer</span>
+          <span id="jobCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total: 0</span>
         </div>
-
         <div class="search-bar-container">
           <span style="font-size: 13px;">🔍</span>
-          <input type="text" id="databaseSearchInput" class="search-input" placeholder="SEARCH EXISTING JOBS BY SB NO, VEHICLE NO, OR JOB NO..." oninput="handleDatabaseSearch()" />
-          <button type="button" class="btn btn-default" onclick="clearSearch()" style="padding: 4px 10px;">Clear</button>
+          <input type="text" id="egmSearchInput" class="search-input" placeholder="SEARCH EGM JOBS BY SB NO, VEHICLE NO, OR JOB NO..." oninput="handleEgmSearch()" />
+          <select id="adminEgmTableFilter" onchange="handleEgmSearch()" style="display: none; width: auto; max-width: 220px; font-size: 11px; padding: 4px;">
+            <option value="ALL">All Companies (Admin)</option>
+          </select>
+          <button type="button" class="btn btn-default" onclick="clearEgmSearch()" style="padding: 4px 10px;">Clear</button>
         </div>
-
         <div class="table-wrapper">
           <table id="masterTable">
             <thead>
               <tr>
+                <th id="thEgmCompanyCol" style="display: none;">Company</th>
                 <th>Job #</th>
                 <th>SI #</th>
                 <th>Vehicle No</th>
@@ -442,21 +481,238 @@
               </tr>
             </thead>
             <tbody id="masterTableBody">
-              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved lines found in database.</td></tr>
+              <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved EGM records.</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: ADMIN PANEL (USER-WISE COMPANY & ICEGATE ID ASSIGNMENTS) -->
+    <!-- TAB 2: IGM ENTRY (IMPORT LAND CUSTOMS) -->
+    <div id="igmTab" class="tab-content">
+      <form id="igmForm">
+        <div class="form-layout">
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="section-card">
+              <div class="section-heading">IGM Transport Details (&lt;TRANS&gt;)</div>
+              <div class="form-row" id="adminIgmCompanyRow" style="display: none; background: #e0f2fe; padding: 6px; border-radius: 6px; border: 1px solid #bae6fd;">
+                <div class="form-group full-width">
+                  <label style="color: #0369a1; font-weight: 700;">Working Company (Admin Override):</label>
+                  <select id="adminIgmCompanySelect" onchange="handleAdminCompanySwitch(this.value)" style="border-color: #0284c7;"></select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>
+                    <span>IGM Job No</span>
+                    <span id="igmJobStatusBadge" class="status-badge status-new">New Entry</span>
+                  </label>
+                  <input type="number" id="igmJobNo" value="1" min="1" required />
+                </div>
+                <div class="form-group">
+                  <label>IGM Job Date</label>
+                  <input type="date" id="igmJobDate" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Port of Reporting</label>
+                  <input type="text" id="igmPort" value="INJIGB" required />
+                </div>
+                <div class="form-group">
+                  <label>Port of Origin / Loading</label>
+                  <input type="text" id="igmPortOfOrigin" value="BTPHU" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Vehicle No (Auto-syncs Chassis)</label>
+                  <input type="text" id="igmVehicleNo" placeholder="E.G. HR67B-0728" required />
+                </div>
+                <div class="form-group">
+                  <label>Arrival Time / Stamp</label>
+                  <input type="text" id="igmArrTime" placeholder="DDMMYYYY 00:08" />
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label>
+                  <span>Transit Permit / Bond No</span>
+                  <span style="font-size: 10px; color: #2563eb; font-weight: normal;">Configured in Admin Profile (Locked)</span>
+                </label>
+                <input type="text" id="igmPermitNo" value="BJOPM0241HCH007" readonly />
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>IGM Cargo Details (&lt;CARGO&gt;)</span>
+                <button type="button" class="btn btn-default" onclick="openImporterMasterModal()" style="font-size: 10px; padding: 2px 8px; height: 22px;">
+                  📋 Importers Master (Pop-up)
+                </button>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Line / Item No</label>
+                  <input type="number" id="igmLineNo" value="1" min="1" required />
+                </div>
+                <div class="form-group">
+                  <label>Import Doc / BL / Bill No</label>
+                  <input type="text" id="igmBillNo" placeholder="E.G. 202654" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Bill Date</label>
+                  <input type="date" id="igmBillDate" required />
+                </div>
+                <div class="form-group">
+                  <label>
+                    <span>Importer / Consignee</span>
+                    <a href="javascript:void(0)" onclick="openImporterMasterModal()" style="font-size: 10px; color: #2563eb; text-decoration: none;">Select / Manage</a>
+                  </label>
+                  <input type="text" id="igmImporterName" placeholder="IMPORTER NAME" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Importer IEC / ID</label>
+                  <input type="text" id="igmImporterIec" placeholder="IEC NUMBER" />
+                </div>
+                <div class="form-group">
+                  <label>No of Packages</label>
+                  <input type="text" id="igmNoOfPkgs" placeholder="PACKAGES" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Package Unit</label>
+                  <input type="text" id="igmPkgUnit" placeholder="E.G. PCS / PKG / CTN" />
+                </div>
+                <div class="form-group">
+                  <label>Gross Weight</label>
+                  <input type="text" id="igmGrossQty" placeholder="GROSS WEIGHT" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Weight Unit</label>
+                  <input type="text" id="igmWeightUnit" value="KGS" />
+                </div>
+                <div class="form-group">
+                  <label>Marks & Numbers</label>
+                  <input type="text" id="igmMarksNos" value="API" />
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label>Cargo Description</label>
+                <textarea id="igmDescription" placeholder="CARGO DESCRIPTION"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="section-card">
+              <div class="section-heading">Container & Equipment (&lt;CONTAIN&gt;)</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Container / Truck Ref 1</label>
+                  <input type="text" id="igmContainRef1" value="11" />
+                </div>
+                <div class="form-group">
+                  <label>Container / Truck Ref 2</label>
+                  <input type="text" id="igmContainRef2" value="11" />
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label>Bound Vehicle / Chassis (Auto-synced)</label>
+                <input type="text" id="igmContainVeh" placeholder="AUTO SYNCED WITH VEHICLE NO" />
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-heading">Transporter Name & Address Lines</div>
+              <div class="form-group full-width">
+                <label>Transporter Name</label>
+                <input type="text" id="igmTransName" value="SELF" />
+              </div>
+              <div class="form-group full-width">
+                <label>Address Lines (1-3)</label>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <input type="text" id="igmTransAddr1" value="." placeholder="Line 1" />
+                  <input type="text" id="igmTransAddr2" value="." placeholder="Line 2" />
+                  <input type="text" id="igmTransAddr3" value="." placeholder="Line 3" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" id="igmTransCity" value="." />
+                </div>
+                <div class="form-group">
+                  <label>Country Code</label>
+                  <input type="text" id="igmTransCountry" value="IN" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-bar">
+          <button type="button" class="btn btn-success" id="btnSaveIgm">Save</button>
+          <button type="button" class="btn btn-secondary" id="btnIgmChecklistPDF">Download IGM Checklist (PDF)</button>
+          <button type="button" class="btn btn-primary" id="btnGenerateIgm">Generate FlatFile (.igm)</button>
+        </div>
+      </form>
+
+      <!-- IGM DATABASE EXPLORER -->
+      <div class="master-list-section">
+        <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+          <span id="tableHeaderIgmTitle">IGM Database Explorer</span>
+          <span id="igmCountLabel" style="font-size: 11px; text-transform: none; color: var(--text-muted);">Total: 0</span>
+        </div>
+        <div class="search-bar-container">
+          <span style="font-size: 13px;">🔍</span>
+          <input type="text" id="igmSearchInput" class="search-input" placeholder="SEARCH IGM JOBS BY BILL NO, VEHICLE NO, OR JOB NO..." oninput="handleIgmSearch()" />
+          <select id="adminIgmTableFilter" onchange="handleIgmSearch()" style="display: none; width: auto; max-width: 220px; font-size: 11px; padding: 4px;">
+            <option value="ALL">All Companies (Admin)</option>
+          </select>
+          <button type="button" class="btn btn-default" onclick="clearIgmSearch()" style="padding: 4px 10px;">Clear</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="igmMasterTable">
+            <thead>
+              <tr>
+                <th id="thIgmCompanyCol" style="display: none;">Company</th>
+                <th>Job #</th>
+                <th>Line #</th>
+                <th>Vehicle No</th>
+                <th>Bill / Doc No</th>
+                <th>Importer Name</th>
+                <th>Pkgs</th>
+                <th>Weight / Unit</th>
+                <th>Description</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="igmMasterTableBody">
+              <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved IGM records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ADMIN PANEL (COMPANIES & USERS ONLY) -->
     <div id="adminTab" class="tab-content">
       <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         
-        <!-- Left: Company Management Master -->
+        <!-- Left: Company Registration -->
         <div class="section-card">
-          <div class="section-heading">Register Company & ICEGATE Profiles</div>
+          <div class="section-heading" id="companyFormHeading">Register / Edit Company Profile</div>
           <form id="addCompanyForm" style="display: flex; flex-direction: column; gap: 10px;">
+            <input type="hidden" id="editCompanyId" value="" />
             <div class="form-group">
               <label>Company Name</label>
               <input type="text" id="newCompanyName" placeholder="E.G. BIKASH DEV LOGISTICS" required />
@@ -469,22 +725,31 @@
               <label>ICEGATE ID</label>
               <input type="text" id="newIcegateId" placeholder="E.G. SUDIPAIRTRAX" required />
             </div>
-            <div class="form-group">
-              <label>Port of Loading</label>
-              <input type="text" id="newPortCode" value="INJIGB" required />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Port Code</label>
+                <input type="text" id="newPortCode" value="INJIGB" required />
+              </div>
+              <div class="form-group">
+                <label>Transit Permit / Bond No (IGM)</label>
+                <input type="text" id="newTransitPermitNo" placeholder="E.G. BJOPM0241HCH007" required />
+              </div>
             </div>
-            <button type="submit" class="btn btn-success" style="height: 34px; margin-top: 6px;">+ Add Company to Database</button>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-default" id="btnCancelEditCompany" onclick="resetCompanyForm()" style="display: none;">Cancel</button>
+              <button type="submit" class="btn btn-success" id="btnSaveCompanyBtn" style="height: 34px; flex: 1;">+ Save Company</button>
+            </div>
           </form>
 
-          <div class="section-heading" style="margin-top: 10px;">Registered Company Profiles</div>
+          <div class="section-heading" style="margin-top: 10px;">Registered Companies</div>
           <div class="table-wrapper" style="max-height: 150px;">
             <table>
               <thead>
                 <tr>
                   <th>Company</th>
-                  <th>Branch</th>
                   <th>ICEGATE ID</th>
-                  <th>Action</th>
+                  <th>Transit Permit</th>
+                  <th style="text-align: right;">Action</th>
                 </tr>
               </thead>
               <tbody id="companyTableBody"></tbody>
@@ -492,13 +757,14 @@
           </div>
         </div>
 
-        <!-- Right: User Management with User-Wise Company Assignment -->
+        <!-- Right: User Management -->
         <div class="section-card">
-          <div class="section-heading">Register Users & Assign Company</div>
+          <div class="section-heading" id="userFormHeading">Register / Edit User Credentials</div>
           <form id="addUserForm" style="display: flex; flex-direction: column; gap: 10px;">
+            <input type="hidden" id="editUserIndex" value="-1" />
             <div class="form-group">
-              <label>Operator / User ID</label>
-              <input type="text" id="newUsername" placeholder="E.G. USER_A" required />
+              <label>Username / User ID</label>
+              <input type="text" id="newUsername" placeholder="E.G. USER_C" required />
             </div>
             <div class="form-group">
               <label>Password</label>
@@ -506,18 +772,19 @@
             </div>
             <div class="form-group">
               <label>Assign Company & ICEGATE ID</label>
-              <select id="newUserAssignedCompanyId" required>
-                <!-- Populated dynamically from Registered Companies -->
-              </select>
+              <select id="newUserAssignedCompanyId" required></select>
             </div>
             <div class="form-group">
               <label>Role</label>
               <select id="newUserRole">
-                <option value="OPERATOR">Operator (Scoped to Assigned Company)</option>
+                <option value="OPERATOR">Operator (Scoped to Company)</option>
                 <option value="ADMIN">Admin (Full Control)</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="height: 34px; margin-top: 6px;">+ Register & Assign User</button>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-default" id="btnCancelEditUser" onclick="resetUserForm()" style="display: none;">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="btnSaveUserBtn" style="height: 34px; flex: 1;">+ Save User</button>
+            </div>
           </form>
 
           <div class="section-heading" style="margin-top: 10px;">Users & Assigned Companies</div>
@@ -526,9 +793,9 @@
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Assigned Company (ICEGATE ID)</th>
+                  <th>Bound Company</th>
                   <th>Role</th>
-                  <th>Action</th>
+                  <th style="text-align: right;">Action</th>
                 </tr>
               </thead>
               <tbody id="userTableBody"></tbody>
@@ -541,27 +808,81 @@
 
   </div>
 
+  <!-- 3. POP-UP MODAL: IMPORTERS MASTER -->
+  <div class="modal-overlay" id="importerMasterModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>Master Importers & IEC Directory</span>
+        <button type="button" class="btn btn-default" onclick="closeImporterMasterModal()" style="padding: 2px 8px; font-size: 11px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="importerMasterForm" style="display: flex; flex-direction: column; gap: 10px; background: var(--surface-subtle); padding: 12px; border-radius: 6px; border: 1px solid var(--border);">
+          <input type="hidden" id="editImporterIndex" value="-1" />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Importer / Consignee Name</label>
+              <input type="text" id="modalImporterName" placeholder="E.G. GURMUKH SINGH & SONS" required />
+            </div>
+            <div class="form-group">
+              <label>Importer IEC / ID</label>
+              <input type="text" id="modalImporterIec" placeholder="E.G. 3312008808" required />
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn btn-default" id="btnCancelEditImporter" onclick="resetImporterModalForm()" style="display: none;">Cancel Edit</button>
+            <button type="submit" class="btn btn-success" id="btnSaveImporterModal">+ Save Importer</button>
+          </div>
+        </form>
+
+        <div class="section-heading" style="margin-bottom: 0;">Registered Importers List</div>
+        <div class="table-wrapper" style="max-height: 180px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Importer / Consignee Name</th>
+                <th>IEC / ID</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="importerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="notification" id="toast"></div>
 
   <script>
     const GS = String.fromCharCode(29);
     const EOR = "\n";
-    let masterJobList = [];
+    
+    let globalDatabaseJobs = [];
+    let globalDatabaseIgmJobs = [];
+    let currentScopedJobs = [];
+    let currentScopedIgmJobs = [];
     let filteredJobList = [];
+    let filteredIgmJobList = [];
 
-    // Master Storage Initializers
     let companiesMaster = [
-      { id: "comp_1", name: "BIKASH DEV", branch: "KOLKATA / JAIGAON BRANCH", icegateId: "SUDIPAIRTRAX", port: "INJIGB" },
-      { id: "comp_2", name: "ROYAL LOGISTICS", branch: "PHUENTSHOLING BORDER", icegateId: "ROYALEXP99", port: "INJIGB" }
+      { id: "comp_a", name: "BIKASH DEV LOGISTICS", branch: "JAIGAON LCS BRANCH", icegateId: "SUDIPAIRTRAX", port: "INJIGB", transitPermit: "BJOPM0241HCH007" },
+      { id: "comp_b", name: "ROYAL BHUTAN FREIGHT", branch: "PHUENTSHOLING BORDER", icegateId: "ROYALEXP99", port: "INJIGB", transitPermit: "BHUTAN-BOND-9901" }
     ];
 
     let usersMaster = [
-      { username: "ADMIN", role: "ADMIN", pass: "admin123", assignedCompanyId: "comp_1" },
-      { username: "USER_A", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_1" },
-      { username: "USER_B", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_2" }
+      { username: "ADMIN", role: "ADMIN", pass: "admin123", assignedCompanyId: "comp_a" },
+      { username: "USER_A", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_a" },
+      { username: "USER_B", role: "OPERATOR", pass: "1234", assignedCompanyId: "comp_b" }
+    ];
+
+    let importersMaster = [
+      { name: "GURMUKH SINGH & SONS", iec: "3312008808" },
+      { name: "BHUTAN TIMBER & ALLIED TRADERS", iec: "0511029910" },
+      { name: "HIMALAYAN WOOD PRODUCTS", iec: "3209004455" }
     ];
 
     let currentLoggedInUser = null;
+    let adminWorkingCompanyId = null;
 
     function initSystemData() {
       const savedCompanies = localStorage.getItem("BIKASH_EGM_COMPANIES");
@@ -570,48 +891,119 @@
       const savedUsers = localStorage.getItem("BIKASH_EGM_USERS");
       if (savedUsers) usersMaster = JSON.parse(savedUsers);
 
+      const savedImporters = localStorage.getItem("BIKASH_IMPORTERS_MASTER");
+      if (savedImporters) importersMaster = JSON.parse(savedImporters);
+
       const savedJobs = localStorage.getItem("BIKASH_EGM_DATABASE");
-      if (savedJobs) {
-        masterJobList = JSON.parse(savedJobs);
-        filteredJobList = [...masterJobList];
-      }
+      if (savedJobs) globalDatabaseJobs = JSON.parse(savedJobs);
+
+      const savedIgmJobs = localStorage.getItem("BIKASH_IGM_DATABASE");
+      if (savedIgmJobs) globalDatabaseIgmJobs = JSON.parse(savedIgmJobs);
 
       renderCompanyProfiles();
       renderUsersTable();
-      populateCompanyDropdownForUsers();
-      renderMasterList();
+      renderImportersTable();
+      populateCompanyDropdowns();
     }
 
-    // Retrieve the exact company profile assigned to the currently logged in user
-    function getAssignedCompanyForCurrentUser() {
+    function getActiveWorkingCompany() {
       if (!currentLoggedInUser) return companiesMaster[0];
+      if (currentLoggedInUser.role === "ADMIN" && adminWorkingCompanyId) {
+        const adminSelected = companiesMaster.find(c => c.id === adminWorkingCompanyId);
+        if (adminSelected) return adminSelected;
+      }
       const assigned = companiesMaster.find(c => c.id === currentLoggedInUser.assignedCompanyId);
       return assigned || companiesMaster[0];
     }
 
-    function updateAssignedCompanyBadge() {
-      const assigned = getAssignedCompanyForCurrentUser();
-      if (assigned) {
-        document.getElementById("assignedCompanyBadge").textContent = `Assigned: ${assigned.name} (${assigned.icegateId})`;
-        document.getElementById("portOfLoading").value = assigned.port || "INJIGB";
+    function refreshScopeAndData() {
+      const activeCompany = getActiveWorkingCompany();
+      const isAdmin = currentLoggedInUser && currentLoggedInUser.role === "ADMIN";
+
+      if (isAdmin) {
+        document.getElementById("adminEgmCompanyRow").style.display = "grid";
+        document.getElementById("adminIgmCompanyRow").style.display = "grid";
+        document.getElementById("adminEgmTableFilter").style.display = "inline-block";
+        document.getElementById("adminIgmTableFilter").style.display = "inline-block";
+        document.getElementById("thEgmCompanyCol").style.display = "table-cell";
+        document.getElementById("thIgmCompanyCol").style.display = "table-cell";
+        document.getElementById("assignedCompanyBadge").textContent = `Admin (${activeCompany.name})`;
+        document.getElementById("tableHeaderEgmTitle").textContent = "EGM Database - All Companies (Admin)";
+        document.getElementById("tableHeaderIgmTitle").textContent = "IGM Database - All Companies (Admin)";
+        
+        currentScopedJobs = [...globalDatabaseJobs];
+        currentScopedIgmJobs = [...globalDatabaseIgmJobs];
+      } else {
+        document.getElementById("adminEgmCompanyRow").style.display = "none";
+        document.getElementById("adminIgmCompanyRow").style.display = "none";
+        document.getElementById("adminEgmTableFilter").style.display = "none";
+        document.getElementById("adminIgmTableFilter").style.display = "none";
+        document.getElementById("thEgmCompanyCol").style.display = "none";
+        document.getElementById("thIgmCompanyCol").style.display = "none";
+        document.getElementById("assignedCompanyBadge").textContent = `${activeCompany.name} (${activeCompany.icegateId})`;
+        document.getElementById("tableHeaderEgmTitle").textContent = `EGM Database - ${activeCompany.name}`;
+        document.getElementById("tableHeaderIgmTitle").textContent = `IGM Database - ${activeCompany.name}`;
+        
+        currentScopedJobs = globalDatabaseJobs.filter(job => job.companyId === activeCompany.id);
+        currentScopedIgmJobs = globalDatabaseIgmJobs.filter(job => job.companyId === activeCompany.id);
       }
+
+      document.getElementById("portOfLoading").value = activeCompany.port || "INJIGB";
+      document.getElementById("igmPort").value = activeCompany.port || "INJIGB";
+      document.getElementById("igmPermitNo").value = activeCompany.transitPermit || "BJOPM0241HCH007";
+
+      handleEgmSearch();
+      handleIgmSearch();
+      handleRealTimeSync();
+      handleIgmRealTimeSync();
     }
 
-    function populateCompanyDropdownForUsers() {
-      const dropdown = document.getElementById("newUserAssignedCompanyId");
-      dropdown.innerHTML = companiesMaster.map(c => `
-        <option value="${c.id}">${c.name} - ${c.branch} (${c.icegateId})</option>
-      `).join("");
+    function handleAdminCompanySwitch(compId) {
+      adminWorkingCompanyId = compId;
+      document.getElementById("adminEgmCompanySelect").value = compId;
+      document.getElementById("adminIgmCompanySelect").value = compId;
+      
+      const comp = companiesMaster.find(c => c.id === compId);
+      if (comp) {
+        document.getElementById("portOfLoading").value = comp.port || "INJIGB";
+        document.getElementById("igmPort").value = comp.port || "INJIGB";
+        document.getElementById("igmPermitNo").value = comp.transitPermit || "BJOPM0241HCH007";
+        document.getElementById("assignedCompanyBadge").textContent = `Admin (${comp.name})`;
+      }
+
+      handleRealTimeSync();
+      handleIgmRealTimeSync();
     }
 
-    function getNextSequentialJobNumber() {
-      if (masterJobList.length === 0) return 1;
-      const occupiedJobs = [...new Set(masterJobList.map(j => parseInt(j.jobNo, 10) || 0))].sort((a, b) => a - b);
+    function getNextSequentialJobNumber(isIgm = false) {
+      const activeCompany = getActiveWorkingCompany();
+      const dataset = isIgm ? globalDatabaseIgmJobs : globalDatabaseJobs;
+      const companyJobs = dataset.filter(j => j.companyId === activeCompany.id);
+      if (companyJobs.length === 0) return 1;
+      
+      const occupiedJobs = [...new Set(companyJobs.map(j => parseInt(j.jobNo, 10) || 0))].sort((a, b) => a - b);
       let nextSeq = 1;
       while (occupiedJobs.includes(nextSeq)) {
         nextSeq++;
       }
       return nextSeq;
+    }
+
+    function populateCompanyDropdowns() {
+      const dropdown = document.getElementById("newUserAssignedCompanyId");
+      dropdown.innerHTML = companiesMaster.map(c => `<option value="${c.id}">${c.name} - ${c.branch} (${c.icegateId})</option>`).join("");
+
+      const adminEgmSelect = document.getElementById("adminEgmCompanySelect");
+      const adminIgmSelect = document.getElementById("adminIgmCompanySelect");
+      const companyOpts = companiesMaster.map(c => `<option value="${c.id}">${c.name} (${c.icegateId})</option>`).join("");
+      adminEgmSelect.innerHTML = companyOpts;
+      adminIgmSelect.innerHTML = companyOpts;
+
+      const egmFilter = document.getElementById("adminEgmTableFilter");
+      const igmFilter = document.getElementById("adminIgmTableFilter");
+      const filterOpts = `<option value="ALL">All Companies</option>` + companiesMaster.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+      egmFilter.innerHTML = filterOpts;
+      igmFilter.innerHTML = filterOpts;
     }
 
     window.switchTab = function(tabId) {
@@ -628,11 +1020,23 @@
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     }
 
+    function getFormattedTimestampWithDefault() {
+      const now = new Date();
+      const d = String(now.getDate()).padStart(2, "0");
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const y = now.getFullYear();
+      return `${d}${m}${y} 00:08`;
+    }
+
     function patchCurrentDates() {
       const today = getTodayDate();
       document.getElementById("jobDate").value = today;
       document.getElementById("sbDate").value = today;
       document.getElementById("lrDate").value = today;
+
+      document.getElementById("igmJobDate").value = today;
+      document.getElementById("igmBillDate").value = today;
+      document.getElementById("igmArrTime").value = getFormattedTimestampWithDefault();
     }
 
     function showToast(message) {
@@ -643,6 +1047,12 @@
     }
 
     function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${day}${month}${year}`;
+    }
+
+    function formatDateStandard(dateStr) {
       if (!dateStr) return "";
       const [year, month, day] = dateStr.split("-");
       return `${year}${month}${day}`;
@@ -662,9 +1072,12 @@
       e.target.value = e.target.value.replace(/\D/g, "").slice(0, 7);
     });
 
-    // ==========================================
-    // USER-WISE LOGIN & AUTOMATIC ASSIGNMENT
-    // ==========================================
+    const igmVehicleInput = document.getElementById("igmVehicleNo");
+    igmVehicleInput.addEventListener("input", (e) => {
+      document.getElementById("igmContainVeh").value = e.target.value.toUpperCase();
+    });
+
+    // Authentication Login
     document.getElementById("loginForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const enteredUser = document.getElementById("username").value.trim().toUpperCase();
@@ -674,7 +1087,7 @@
 
       if (matched) {
         currentLoggedInUser = matched;
-        const userCompany = getAssignedCompanyForCurrentUser();
+        adminWorkingCompanyId = matched.assignedCompanyId || companiesMaster[0].id;
 
         document.getElementById("userBadge").textContent = `${matched.username} (${matched.role})`;
         document.getElementById("loginScreen").style.display = "none";
@@ -683,14 +1096,13 @@
         const adminBtn = document.getElementById("adminNavBtn");
         adminBtn.style.display = matched.role === "ADMIN" ? "block" : "none";
 
-        updateAssignedCompanyBadge();
-        switchTab("entryTab");
+        populateCompanyDropdowns();
+        document.getElementById("adminEgmCompanySelect").value = adminWorkingCompanyId;
+        document.getElementById("adminIgmCompanySelect").value = adminWorkingCompanyId;
 
-        const nextAvailable = getNextSequentialJobNumber();
-        jobInput.value = nextAvailable;
-        handleRealTimeSync();
-
-        showToast(`Welcome ${matched.username}! Working for: ${userCompany.name} (${userCompany.icegateId})`);
+        refreshScopeAndData();
+        switchTab("egmTab");
+        showToast(`Logged in as ${matched.username}`);
       } else {
         alert("Invalid Username or Password.");
       }
@@ -698,97 +1110,141 @@
 
     document.getElementById("btnLogout").addEventListener("click", () => {
       currentLoggedInUser = null;
+      adminWorkingCompanyId = null;
       document.getElementById("portalScreen").style.display = "none";
       document.getElementById("loginScreen").style.display = "flex";
       document.getElementById("loginForm").reset();
     });
 
-    // ==========================================
-    // ADMIN PANEL: COMPANY & USER MANAGEMENT
-    // ==========================================
+    // Admin Companies
     document.getElementById("addCompanyForm").addEventListener("submit", (e) => {
       e.preventDefault();
-      const newComp = {
-        id: "comp_" + String(Date.now()),
-        name: document.getElementById("newCompanyName").value.trim().toUpperCase(),
-        branch: document.getElementById("newBranchName").value.trim().toUpperCase(),
-        icegateId: document.getElementById("newIcegateId").value.trim().toUpperCase(),
-        port: document.getElementById("newPortCode").value.trim().toUpperCase()
-      };
+      const editId = document.getElementById("editCompanyId").value;
+      const name = document.getElementById("newCompanyName").value.trim().toUpperCase();
+      const branch = document.getElementById("newBranchName").value.trim().toUpperCase();
+      const icegateId = document.getElementById("newIcegateId").value.trim().toUpperCase();
+      const port = document.getElementById("newPortCode").value.trim().toUpperCase();
+      const transitPermit = document.getElementById("newTransitPermitNo").value.trim().toUpperCase();
 
-      companiesMaster.push(newComp);
+      if (editId) {
+        const existingIdx = companiesMaster.findIndex(c => c.id === editId);
+        if (existingIdx > -1) {
+          companiesMaster[existingIdx] = { id: editId, name, branch, icegateId, port, transitPermit };
+          showToast(`Company '${name}' updated.`);
+        }
+      } else {
+        const newComp = {
+          id: "comp_" + String(Date.now()),
+          name, branch, icegateId, port, transitPermit
+        };
+        companiesMaster.push(newComp);
+        showToast(`Company '${name}' registered.`);
+      }
+
       saveAdminDatabase();
       renderCompanyProfiles();
-      populateCompanyDropdownForUsers();
-      document.getElementById("addCompanyForm").reset();
-      showToast(`Company '${newComp.name}' registered.`);
+      populateCompanyDropdowns();
+      resetCompanyForm();
+      refreshScopeAndData();
     });
+
+    function resetCompanyForm() {
+      document.getElementById("addCompanyForm").reset();
+      document.getElementById("editCompanyId").value = "";
+      document.getElementById("companyFormHeading").textContent = "Register / Edit Company Profile";
+      document.getElementById("btnSaveCompanyBtn").textContent = "+ Save Company";
+      document.getElementById("btnCancelEditCompany").style.display = "none";
+      document.getElementById("newPortCode").value = "INJIGB";
+    }
 
     function renderCompanyProfiles() {
       const tbody = document.getElementById("companyTableBody");
       tbody.innerHTML = companiesMaster.map((c, idx) => `
         <tr>
           <td><strong>${c.name}</strong></td>
-          <td>${c.branch}</td>
           <td><span class="badge">${c.icegateId}</span></td>
-          <td>
+          <td style="font-size: 11px;">${c.transitPermit || '—'}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-default table-btn" onclick="editCompany(${idx})">Edit</button>
             <button type="button" class="btn btn-danger table-btn" onclick="deleteCompany(${idx})">✕</button>
           </td>
         </tr>
       `).join("");
     }
 
+    window.editCompany = function(index) {
+      const c = companiesMaster[index];
+      if (!c) return;
+      document.getElementById("editCompanyId").value = c.id;
+      document.getElementById("newCompanyName").value = c.name;
+      document.getElementById("newBranchName").value = c.branch;
+      document.getElementById("newIcegateId").value = c.icegateId;
+      document.getElementById("newPortCode").value = c.port || "INJIGB";
+      document.getElementById("newTransitPermitNo").value = c.transitPermit || "";
+
+      document.getElementById("companyFormHeading").textContent = `Editing: ${c.name}`;
+      document.getElementById("btnSaveCompanyBtn").textContent = "Update Company Profile";
+      document.getElementById("btnCancelEditCompany").style.display = "inline-flex";
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     window.deleteCompany = function(index) {
       if (companiesMaster.length <= 1) {
         alert("Must retain at least one company in database.");
         return;
       }
-      if (confirm("Delete this company profile? Users assigned to it will fallback to default.")) {
+      if (confirm("Delete this company profile? Assigned users will fallback to default company.")) {
         const deletedCompId = companiesMaster[index].id;
         companiesMaster.splice(index, 1);
-        
-        // Re-assign orphaned users to first available company
         usersMaster.forEach(u => {
-          if (u.assignedCompanyId === deletedCompId) {
-            u.assignedCompanyId = companiesMaster[0].id;
-          }
+          if (u.assignedCompanyId === deletedCompId) u.assignedCompanyId = companiesMaster[0].id;
         });
-
         saveAdminDatabase();
         renderCompanyProfiles();
         renderUsersTable();
-        populateCompanyDropdownForUsers();
-        updateAssignedCompanyBadge();
+        populateCompanyDropdowns();
+        resetCompanyForm();
+        refreshScopeAndData();
       }
     };
 
+    // Admin Users
     document.getElementById("addUserForm").addEventListener("submit", (e) => {
       e.preventDefault();
+      const editIdx = parseInt(document.getElementById("editUserIndex").value, 10);
       const username = document.getElementById("newUsername").value.trim().toUpperCase();
       const pass = document.getElementById("newPassword").value;
       const assignedCompanyId = document.getElementById("newUserAssignedCompanyId").value;
       const role = document.getElementById("newUserRole").value;
 
-      if (usersMaster.find(u => u.username === username)) {
-        alert("Username already exists in database.");
-        return;
+      if (editIdx > -1) {
+        usersMaster[editIdx] = { username, pass, role, assignedCompanyId };
+        showToast(`User '${username}' updated.`);
+      } else {
+        if (usersMaster.find(u => u.username === username)) {
+          alert("Username already exists in database.");
+          return;
+        }
+        usersMaster.push({ username, pass, role, assignedCompanyId });
+        showToast(`User '${username}' registered.`);
       }
 
-      const newUser = { username, pass, role, assignedCompanyId };
-      usersMaster.push(newUser);
       saveAdminDatabase();
       renderUsersTable();
-      document.getElementById("addUserForm").reset();
-      
-      const comp = companiesMaster.find(c => c.id === assignedCompanyId);
-      showToast(`User '${newUser.username}' assigned to '${comp ? comp.name : ""}'`);
+      resetUserForm();
     });
+
+    function resetUserForm() {
+      document.getElementById("addUserForm").reset();
+      document.getElementById("editUserIndex").value = "-1";
+      document.getElementById("userFormHeading").textContent = "Register / Edit User Credentials";
+      document.getElementById("btnSaveUserBtn").textContent = "+ Save User";
+      document.getElementById("btnCancelEditUser").style.display = "none";
+    }
 
     function renderUsersTable() {
       const tbody = document.getElementById("userTableBody");
       tbody.innerHTML = usersMaster.map((u, idx) => {
-        const comp = companiesMaster.find(c => c.id === u.assignedCompanyId);
-        const compLabel = comp ? `${comp.name} (${comp.icegateId})` : "Default Profile";
         return `
           <tr>
             <td><strong>${u.username}</strong></td>
@@ -800,31 +1256,46 @@
               </select>
             </td>
             <td><span class="badge">${u.role}</span></td>
-            <td>
-              ${u.username === 'ADMIN' ? '—' : `<button type="button" class="btn btn-danger table-btn" onclick="deleteUser(${idx})">✕</button>`}
+            <td style="text-align: right; white-space: nowrap;">
+              <button type="button" class="btn btn-default table-btn" onclick="editUser(${idx})">Edit</button>
+              ${u.username === 'ADMIN' ? '' : `<button type="button" class="btn btn-danger table-btn" onclick="deleteUser(${idx})">✕</button>`}
             </td>
           </tr>
         `;
       }).join("");
     }
 
+    window.editUser = function(index) {
+      const u = usersMaster[index];
+      if (!u) return;
+      document.getElementById("editUserIndex").value = index;
+      document.getElementById("newUsername").value = u.username;
+      document.getElementById("newPassword").value = u.pass;
+      document.getElementById("newUserAssignedCompanyId").value = u.assignedCompanyId;
+      document.getElementById("newUserRole").value = u.role;
+
+      document.getElementById("userFormHeading").textContent = `Editing: ${u.username}`;
+      document.getElementById("btnSaveUserBtn").textContent = "Update User Account";
+      document.getElementById("btnCancelEditUser").style.display = "inline-flex";
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     window.updateUserCompanyAssignment = function(userIndex, newCompanyId) {
       usersMaster[userIndex].assignedCompanyId = newCompanyId;
       saveAdminDatabase();
-      const user = usersMaster[userIndex];
-      const comp = companiesMaster.find(c => c.id === newCompanyId);
-      if (currentLoggedInUser && currentLoggedInUser.username === user.username) {
+      if (currentLoggedInUser && currentLoggedInUser.username === usersMaster[userIndex].username) {
         currentLoggedInUser.assignedCompanyId = newCompanyId;
-        updateAssignedCompanyBadge();
+        refreshScopeAndData();
       }
-      showToast(`Reassigned ${user.username} to ${comp.name}`);
+      showToast("User company assignment updated.");
     };
 
     window.deleteUser = function(index) {
-      if (confirm("Delete this user?")) {
+      if (confirm("Delete this user from database?")) {
         usersMaster.splice(index, 1);
         saveAdminDatabase();
         renderUsersTable();
+        resetUserForm();
       }
     };
 
@@ -833,40 +1304,133 @@
       localStorage.setItem("BIKASH_EGM_USERS", JSON.stringify(usersMaster));
     }
 
-    // ==========================================
-    // DATABASE EXPLORER & SEARCH SYSTEM
-    // ==========================================
-    window.handleDatabaseSearch = function() {
-      const query = document.getElementById("databaseSearchInput").value.trim().toUpperCase();
-      if (!query) {
-        filteredJobList = [...masterJobList];
+    // Importers Directory
+    window.openImporterMasterModal = function() {
+      renderImportersTable();
+      document.getElementById("importerMasterModal").style.display = "flex";
+    };
+
+    window.closeImporterMasterModal = function() {
+      document.getElementById("importerMasterModal").style.display = "none";
+      resetImporterModalForm();
+    };
+
+    function resetImporterModalForm() {
+      document.getElementById("importerMasterForm").reset();
+      document.getElementById("editImporterIndex").value = "-1";
+      document.getElementById("btnSaveImporterModal").textContent = "+ Save Importer";
+      document.getElementById("btnCancelEditImporter").style.display = "none";
+    }
+
+    document.getElementById("importerMasterForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("modalImporterName").value.trim().toUpperCase();
+      const iec = document.getElementById("modalImporterIec").value.trim().toUpperCase();
+      const editIdx = parseInt(document.getElementById("editImporterIndex").value, 10);
+
+      if (editIdx > -1) {
+        importersMaster[editIdx] = { name, iec };
+        showToast(`Importer '${name}' updated.`);
       } else {
-        filteredJobList = masterJobList.filter(item => 
+        importersMaster.push({ name, iec });
+        showToast(`Importer '${name}' added to Master.`);
+      }
+
+      localStorage.setItem("BIKASH_IMPORTERS_MASTER", JSON.stringify(importersMaster));
+      renderImportersTable();
+      resetImporterModalForm();
+    });
+
+    function renderImportersTable() {
+      const tbody = document.getElementById("importerTableBody");
+      tbody.innerHTML = importersMaster.map((imp, idx) => `
+        <tr>
+          <td><strong>${imp.name}</strong></td>
+          <td><span class="badge" style="background:#e0f2fe; color:#0369a1; border:none;">${imp.iec}</span></td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-success table-btn" onclick="selectImporterIntoForm(${idx})">Select</button>
+            <button type="button" class="btn btn-default table-btn" onclick="editImporterInModal(${idx})">Edit</button>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteImporterFromModal(${idx})">✕</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    window.selectImporterIntoForm = function(idx) {
+      const imp = importersMaster[idx];
+      if (!imp) return;
+      document.getElementById("igmImporterName").value = imp.name;
+      document.getElementById("igmImporterIec").value = imp.iec;
+      closeImporterMasterModal();
+      showToast(`Selected '${imp.name}' into IGM Entry.`);
+    };
+
+    window.editImporterInModal = function(idx) {
+      const imp = importersMaster[idx];
+      if (!imp) return;
+      document.getElementById("modalImporterName").value = imp.name;
+      document.getElementById("modalImporterIec").value = imp.iec;
+      document.getElementById("editImporterIndex").value = idx;
+      document.getElementById("btnSaveImporterModal").textContent = "Update Importer";
+      document.getElementById("btnCancelEditImporter").style.display = "inline-flex";
+    };
+
+    window.deleteImporterFromModal = function(idx) {
+      const imp = importersMaster[idx];
+      if (confirm(`Remove importer '${imp.name}' from Master Directory?`)) {
+        importersMaster.splice(idx, 1);
+        localStorage.setItem("BIKASH_IMPORTERS_MASTER", JSON.stringify(importersMaster));
+        renderImportersTable();
+        showToast("Importer removed.");
+      }
+    };
+
+    // EGM Database Search
+    window.handleEgmSearch = function() {
+      const query = document.getElementById("egmSearchInput").value.trim().toUpperCase();
+      const isAdmin = currentLoggedInUser && currentLoggedInUser.role === "ADMIN";
+      const filterCompanyId = isAdmin ? document.getElementById("adminEgmTableFilter").value : "ALL";
+
+      let source = [...currentScopedJobs];
+      if (isAdmin && filterCompanyId !== "ALL") {
+        source = source.filter(j => j.companyId === filterCompanyId);
+      }
+
+      if (!query) {
+        filteredJobList = source;
+      } else {
+        filteredJobList = source.filter(item => 
           (item.sbNo && item.sbNo.toUpperCase().includes(query)) ||
           (item.vehicleNo && item.vehicleNo.toUpperCase().includes(query)) ||
-          (String(item.jobNo).includes(query))
+          (String(item.jobNo).includes(query)) ||
+          (item.companyName && item.companyName.toUpperCase().includes(query))
         );
       }
       renderMasterList();
     };
 
-    window.clearSearch = function() {
-      document.getElementById("databaseSearchInput").value = "";
-      filteredJobList = [...masterJobList];
-      renderMasterList();
+    window.clearEgmSearch = function() {
+      document.getElementById("egmSearchInput").value = "";
+      if (document.getElementById("adminEgmTableFilter")) {
+        document.getElementById("adminEgmTableFilter").value = "ALL";
+      }
+      handleEgmSearch();
     };
 
     function renderMasterList() {
       const tbody = document.getElementById("masterTableBody");
-      document.getElementById("jobCountLabel").textContent = `Total Saved: ${masterJobList.length} (Showing: ${filteredJobList.length})`;
+      const isAdmin = currentLoggedInUser && currentLoggedInUser.role === "ADMIN";
+      
+      document.getElementById("jobCountLabel").textContent = `Total: ${currentScopedJobs.length} (Showing: ${filteredJobList.length})`;
       
       if (filteredJobList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No matching records found in database.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 16px;">No records found.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filteredJobList.map((item) => `
         <tr>
+          ${isAdmin ? `<td style="font-size:11px; color:#475569;"><strong>${item.companyName || '—'}</strong></td>` : ''}
           <td><strong>#${item.jobNo}</strong></td>
           <td><span class="badge" style="background:#e0e7ff; color:#3730a3; border:none;">SI ${item.siNo}</span></td>
           <td>${item.vehicleNo || '—'}</td>
@@ -876,34 +1440,31 @@
           <td>${item.quantity ? `${item.quantity} ${item.unit}` : '—'}</td>
           <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || 'API'}</td>
           <td style="text-align: right; white-space: nowrap;">
-            <button type="button" class="btn btn-default table-btn" onclick="editLineById('${item.jobNo}', '${item.siNo}')">Edit</button>
-            <button type="button" class="btn btn-danger table-btn" onclick="deleteLineById('${item.jobNo}', '${item.siNo}')">Delete</button>
+            <button type="button" class="btn btn-default table-btn" onclick="editLineById('${item.companyId}', '${item.jobNo}', '${item.siNo}')">Edit</button>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteLineById('${item.companyId}', '${item.jobNo}', '${item.siNo}')">Delete</button>
           </td>
         </tr>
       `).join("");
     }
 
-    // ==========================================
-    // EGM ENTRY FORM ENGINE
-    // ==========================================
-    function getFormData() {
+    function getEgmFormData() {
       const val = (id) => (document.getElementById(id).value || "").trim().toUpperCase();
       const rawJobDate = document.getElementById("jobDate").value;
       const jobDateFormatted = formatDate(rawJobDate);
       const port = val("portOfLoading");
       const job = val("jobNo");
       const siNo = val("siNo") || "1";
-      
-      // Pull the assigned company details bound to the current logged-in user
-      const userAssignedComp = getAssignedCompanyForCurrentUser();
+      const assignedComp = getActiveWorkingCompany();
       
       const paddedJob = String(job).padStart(2, "0");
-      const msgRefNo = `${paddedJob}${port}${jobDateFormatted.slice(6,8)}${jobDateFormatted.slice(4,6)}${jobDateFormatted.slice(0,4)}`;
+      const msgRefNo = `${paddedJob}${port}${jobDateFormatted}`;
 
       return {
-        companyName: userAssignedComp.name,
-        branchName: userAssignedComp.branch,
-        icegateId: userAssignedComp.icegateId,
+        companyId: assignedComp.id,
+        companyName: assignedComp.name,
+        branchName: assignedComp.branch,
+        icegateId: assignedComp.icegateId,
+        createdBy: currentLoggedInUser ? currentLoggedInUser.username : "ANON",
         jobNo: job,
         siNo: siNo,
         shippingMode: document.getElementById("shippingMode").value,
@@ -937,7 +1498,7 @@
       };
     }
 
-    function populateForm(data) {
+    function populateEgmForm(data) {
       document.getElementById("shippingMode").value = data.shippingMode || "Multiple Shipping Mode";
       document.getElementById("jobDate").value = data.jobDate || getTodayDate();
       document.getElementById("portOfLoading").value = (data.portOfLoading || "INJIGB").toUpperCase();
@@ -966,30 +1527,20 @@
       document.getElementById("description").value = (data.description || "API").toUpperCase();
     }
 
-    function clearConsignmentFields() {
-      const today = getTodayDate();
-      document.getElementById("lrNo").value = "NIL";
-      document.getElementById("lrDate").value = today;
-      document.getElementById("noOfPkgs").value = "";
-      document.getElementById("quantity").value = "";
-      document.getElementById("unit").value = "KGS";
-      document.getElementById("marksNos").value = "API";
-      document.getElementById("description").value = "API";
-    }
-
     const jobInput = document.getElementById("jobNo");
     const siInput = document.getElementById("siNo");
     const vehicleInput = document.getElementById("vehicleNo");
-    const jobBadge = document.getElementById("jobStatusBadge");
+    const egmJobBadge = document.getElementById("egmJobStatusBadge");
     const siBadge = document.getElementById("siStatusBadge");
     const shippingModeSelect = document.getElementById("shippingMode");
     const vehicleLockBadge = document.getElementById("vehicleLockBadge");
     const sbLockBadge = document.getElementById("sbLockBadge");
 
-    function applyModeRules(enteredJob, enteredSi) {
+    function applyEgmModeRules(enteredJob, enteredSi) {
       const mode = shippingModeSelect.value;
-      const otherLines = masterJobList.filter(
-        item => String(item.jobNo) === String(enteredJob) && String(item.siNo) !== String(enteredSi)
+      const activeCompany = getActiveWorkingCompany();
+      const otherLines = globalDatabaseJobs.filter(
+        item => item.companyId === activeCompany.id && String(item.jobNo) === String(enteredJob) && String(item.siNo) !== String(enteredSi)
       );
 
       if (mode === "Multiple Shipping Mode") {
@@ -1011,7 +1562,6 @@
         sbInput.readOnly = false;
         sbLockBadge.textContent = "Max 7 digits";
         sbLockBadge.style.color = "var(--text-muted)";
-
       } else if (mode === "Multiple Truck Mode") {
         vehicleInput.readOnly = false;
         vehicleLockBadge.textContent = "Vehicle #";
@@ -1038,65 +1588,58 @@
     function handleRealTimeSync() {
       const enteredJob = jobInput.value.trim();
       const enteredSi = siInput.value.trim();
-      const mode = shippingModeSelect.value;
+      const activeCompany = getActiveWorkingCompany();
 
       if (!enteredJob || !enteredSi) return;
 
-      const anyJobLine = masterJobList.find(item => String(item.jobNo) === String(enteredJob));
+      const anyJobLine = globalDatabaseJobs.find(item => item.companyId === activeCompany.id && String(item.jobNo) === String(enteredJob));
       if (anyJobLine) {
-        jobBadge.textContent = "Existing Job";
-        jobBadge.className = "status-badge status-existing";
+        egmJobBadge.textContent = "Existing Job";
+        egmJobBadge.className = "status-badge status-existing";
       } else {
-        jobBadge.textContent = "New Job";
-        jobBadge.className = "status-badge status-new";
+        egmJobBadge.textContent = "New Entry";
+        egmJobBadge.className = "status-badge status-new";
       }
 
-      const foundLine = masterJobList.find(
-        item => String(item.jobNo) === String(enteredJob) && String(item.siNo) === String(enteredSi)
+      const foundLine = globalDatabaseJobs.find(
+        item => item.companyId === activeCompany.id && String(item.jobNo) === String(enteredJob) && String(item.siNo) === String(enteredSi)
       );
 
       if (foundLine) {
         siBadge.textContent = `Line ${enteredSi} (Saved)`;
         siBadge.className = "status-badge status-existing";
-        populateForm(foundLine);
+        populateEgmForm(foundLine);
       } else {
         siBadge.textContent = `Line ${enteredSi} (New)`;
         siBadge.className = "status-badge status-new";
-        clearConsignmentFields();
-
-        if (anyJobLine) {
-          if (mode === "Multiple Shipping Mode") {
-            vehicleInput.value = anyJobLine.vehicleNo || "";
-            document.getElementById("regCountry").value = anyJobLine.regCountry || "IN";
-            sbInput.value = "";
-            document.getElementById("sbDate").value = getTodayDate();
-          } else if (mode === "Multiple Truck Mode") {
-            sbInput.value = anyJobLine.sbNo || "";
-            document.getElementById("sbDate").value = anyJobLine.sbDate || getTodayDate();
-            vehicleInput.value = "";
-          }
-        } else {
-          vehicleInput.value = "";
-          sbInput.value = "";
-          document.getElementById("sbDate").value = getTodayDate();
-        }
+        
+        const today = getTodayDate();
+        document.getElementById("lrNo").value = "NIL";
+        document.getElementById("lrDate").value = today;
+        document.getElementById("noOfPkgs").value = "";
+        document.getElementById("quantity").value = "";
+        document.getElementById("unit").value = "KGS";
+        document.getElementById("marksNos").value = "API";
+        document.getElementById("description").value = "API";
       }
 
-      applyModeRules(enteredJob, enteredSi);
+      applyEgmModeRules(enteredJob, enteredSi);
     }
 
-    function enforceSequentialJobRedirect() {
+    function enforceEgmSequentialJobRedirect() {
       const enteredJobNum = parseInt(jobInput.value, 10);
       if (!enteredJobNum || isNaN(enteredJobNum)) return;
 
-      const occupiedJobs = [...new Set(masterJobList.map(j => parseInt(j.jobNo, 10) || 0))];
+      const activeCompany = getActiveWorkingCompany();
+      const companyJobs = globalDatabaseJobs.filter(j => j.companyId === activeCompany.id);
+      const occupiedJobs = [...new Set(companyJobs.map(j => parseInt(j.jobNo, 10) || 0))];
 
       if (occupiedJobs.includes(enteredJobNum)) {
         handleRealTimeSync();
         return;
       }
 
-      const nextContinuousSeq = getNextSequentialJobNumber();
+      const nextContinuousSeq = getNextSequentialJobNumber(false);
 
       if (enteredJobNum > nextContinuousSeq) {
         jobInput.value = nextContinuousSeq;
@@ -1109,14 +1652,14 @@
     }
 
     jobInput.addEventListener("input", handleRealTimeSync);
-    jobInput.addEventListener("change", enforceSequentialJobRedirect);
-    jobInput.addEventListener("blur", enforceSequentialJobRedirect);
+    jobInput.addEventListener("change", enforceEgmSequentialJobRedirect);
+    jobInput.addEventListener("blur", enforceEgmSequentialJobRedirect);
 
     siInput.addEventListener("input", handleRealTimeSync);
     shippingModeSelect.addEventListener("change", handleRealTimeSync);
 
-    document.getElementById("btnSave").addEventListener("click", () => {
-      const data = getFormData();
+    document.getElementById("btnSaveEgm").addEventListener("click", () => {
+      const data = getEgmFormData();
       if (!data.jobNo || !data.siNo) {
         showToast("Please provide valid Job and SI Number.");
         return;
@@ -1127,82 +1670,332 @@
         return;
       }
 
-      const existingIdx = masterJobList.findIndex(
-        item => String(item.jobNo) === String(data.jobNo) && String(item.siNo) === String(data.siNo)
+      const existingIdx = globalDatabaseJobs.findIndex(
+        item => item.companyId === data.companyId && String(item.jobNo) === String(data.jobNo) && String(item.siNo) === String(data.siNo)
       );
 
       if (existingIdx > -1) {
-        masterJobList[existingIdx] = data;
-        showToast(`Saved: Job #${data.jobNo} Line ${data.siNo} updated.`);
+        globalDatabaseJobs[existingIdx] = data;
       } else {
-        masterJobList.push(data);
-        showToast(`Saved: Job #${data.jobNo} Line ${data.siNo} added.`);
+        globalDatabaseJobs.push(data);
       }
 
-      localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
-      handleDatabaseSearch();
-      handleRealTimeSync();
-    });
-
-    document.getElementById("btnCloudSave").addEventListener("click", () => {
-      if (masterJobList.length === 0) {
-        showToast("No database records to backup.");
-        return;
-      }
-      localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
-      showToast("Database safely backed up to storage.");
+      localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(globalDatabaseJobs));
+      refreshScopeAndData();
+      showToast(`Saved EGM Job #${data.jobNo} Line ${data.siNo}`);
     });
 
     document.getElementById("btnDuplicateFreshJob").addEventListener("click", () => {
-      const nextFreshJob = getNextSequentialJobNumber();
-
-      jobInput.value = nextFreshJob;
-      siInput.value = 1;
+      siInput.value = parseInt(siInput.value, 10) + 1;
       patchCurrentDates();
-
-      jobBadge.textContent = "New Job (Duplicate)";
-      jobBadge.className = "status-badge status-new";
-      siBadge.textContent = "Line 1 (Duplicate)";
+      siBadge.textContent = `Line ${siInput.value} (New)`;
       siBadge.className = "status-badge status-new";
-
-      vehicleInput.readOnly = false;
-      sbInput.readOnly = false;
-
-      showToast(`Duplicated to next continuous Job #${nextFreshJob}`);
+      showToast(`Duplicated to Line #${siInput.value}`);
     });
 
-    window.editLineById = function(jobNo, siNo) {
-      const item = masterJobList.find(i => String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
+    window.editLineById = function(companyId, jobNo, siNo) {
+      const item = globalDatabaseJobs.find(i => i.companyId === companyId && String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
       if (!item) return;
+
+      if (currentLoggedInUser && currentLoggedInUser.role === "ADMIN" && adminWorkingCompanyId !== companyId) {
+        handleAdminCompanySwitch(companyId);
+      }
+
       jobInput.value = item.jobNo;
       siInput.value = item.siNo;
       handleRealTimeSync();
-      showToast(`Loaded Job #${item.jobNo} (Line ${item.siNo})`);
+      showToast(`Loaded EGM Job #${item.jobNo} Line ${item.siNo}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.deleteLineById = function(jobNo, siNo) {
-      const idx = masterJobList.findIndex(i => String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
+    window.deleteLineById = function(companyId, jobNo, siNo) {
+      const idx = globalDatabaseJobs.findIndex(i => i.companyId === companyId && String(i.jobNo) === String(jobNo) && String(i.siNo) === String(siNo));
       if (idx === -1) return;
-      if (confirm(`Remove Job #${jobNo} Line ${siNo}?`)) {
-        masterJobList.splice(idx, 1);
-        localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(masterJobList));
-        handleDatabaseSearch();
-        handleRealTimeSync();
+      if (confirm(`Remove EGM Job #${jobNo} Line ${siNo}?`)) {
+        globalDatabaseJobs.splice(idx, 1);
+        localStorage.setItem("BIKASH_EGM_DATABASE", JSON.stringify(globalDatabaseJobs));
+        refreshScopeAndData();
         showToast(`Removed Line ${siNo}`);
       }
     };
 
-    // ==========================================
-    // PDF CHECKLIST WITH LOGGED-IN USER'S COMPANY
-    // ==========================================
+    // IGM Engine
+    window.handleIgmSearch = function() {
+      const query = document.getElementById("igmSearchInput").value.trim().toUpperCase();
+      const isAdmin = currentLoggedInUser && currentLoggedInUser.role === "ADMIN";
+      const filterCompanyId = isAdmin ? document.getElementById("adminIgmTableFilter").value : "ALL";
+
+      let source = [...currentScopedIgmJobs];
+      if (isAdmin && filterCompanyId !== "ALL") {
+        source = source.filter(j => j.companyId === filterCompanyId);
+      }
+
+      if (!query) {
+        filteredIgmJobList = source;
+      } else {
+        filteredIgmJobList = source.filter(item => 
+          (item.billNo && item.billNo.toUpperCase().includes(query)) ||
+          (item.vehicleNo && item.vehicleNo.toUpperCase().includes(query)) ||
+          (String(item.jobNo).includes(query)) ||
+          (item.importerName && item.importerName.toUpperCase().includes(query))
+        );
+      }
+      renderIgmMasterList();
+    };
+
+    window.clearIgmSearch = function() {
+      document.getElementById("igmSearchInput").value = "";
+      if (document.getElementById("adminIgmTableFilter")) {
+        document.getElementById("adminIgmTableFilter").value = "ALL";
+      }
+      handleIgmSearch();
+    };
+
+    function renderIgmMasterList() {
+      const tbody = document.getElementById("igmMasterTableBody");
+      const isAdmin = currentLoggedInUser && currentLoggedInUser.role === "ADMIN";
+      
+      document.getElementById("igmCountLabel").textContent = `Total: ${currentScopedIgmJobs.length} (Showing: ${filteredIgmJobList.length})`;
+      
+      if (filteredIgmJobList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 16px;">No saved IGM records found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filteredIgmJobList.map((item) => `
+        <tr>
+          ${isAdmin ? `<td style="font-size:11px; color:#475569;"><strong>${item.companyName || '—'}</strong></td>` : ''}
+          <td><strong>#${item.jobNo}</strong></td>
+          <td><span class="badge" style="background:#e0e7ff; color:#3730a3; border:none;">Line ${item.lineNo}</span></td>
+          <td>${item.vehicleNo || '—'}</td>
+          <td><strong>${item.billNo || '—'}</strong></td>
+          <td>${item.importerName || '—'}</td>
+          <td>${item.noOfPkgs || '—'} ${item.pkgUnit || ''}</td>
+          <td>${item.grossQty || '—'} ${item.weightUnit || 'KGS'}</td>
+          <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.description || 'API'}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-default table-btn" onclick="editIgmLineById('${item.companyId}', '${item.jobNo}', '${item.lineNo}')">Edit</button>
+            <button type="button" class="btn btn-danger table-btn" onclick="deleteIgmLineById('${item.companyId}', '${item.jobNo}', '${item.lineNo}')">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function getIgmFormData() {
+      const val = (id) => (document.getElementById(id).value || "").trim().toUpperCase();
+      const rawJobDate = document.getElementById("igmJobDate").value;
+      const jobDateFormatted = formatDate(rawJobDate);
+      const port = val("igmPort");
+      const job = val("igmJobNo");
+      const lineNo = val("igmLineNo") || "1";
+      const assignedComp = getActiveWorkingCompany();
+      
+      const paddedJob = String(job).padStart(2, "0");
+      const msgRefNo = `${paddedJob}${port}${jobDateFormatted}`;
+
+      return {
+        companyId: assignedComp.id,
+        companyName: assignedComp.name,
+        branchName: assignedComp.branch,
+        icegateId: assignedComp.icegateId,
+        createdBy: currentLoggedInUser ? currentLoggedInUser.username : "ANON",
+        jobNo: job,
+        lineNo: lineNo,
+        jobDate: rawJobDate,
+        jobDateFormatted: jobDateFormatted,
+        port: port,
+        portOfOrigin: val("igmPortOfOrigin") || "BTPHU",
+        vehicleNo: val("igmVehicleNo"),
+        arrTime: val("igmArrTime") || getFormattedTimestampWithDefault(),
+        permitNo: assignedComp.transitPermit || "BJOPM0241HCH007",
+        transName: val("igmTransName") || "SELF",
+        transAddr1: val("igmTransAddr1") || ".",
+        transAddr2: val("igmTransAddr2") || ".",
+        transAddr3: val("igmTransAddr3") || ".",
+        transCity: val("igmTransCity") || ".",
+        transCountry: val("igmTransCountry") || "IN",
+        billNo: val("igmBillNo"),
+        billDate: document.getElementById("igmBillDate").value,
+        billDateFormatted: formatDate(document.getElementById("igmBillDate").value),
+        importerName: val("igmImporterName"),
+        importerIec: val("igmImporterIec"),
+        noOfPkgs: val("igmNoOfPkgs"),
+        pkgUnit: val("igmPkgUnit") || "PCS",
+        grossQty: val("igmGrossQty"),
+        weightUnit: val("igmWeightUnit") || "KGS",
+        marksNos: val("igmMarksNos") || "API",
+        description: val("igmDescription") || "PINE SAWN FORM",
+        containRef1: val("igmContainRef1") || "11",
+        containRef2: val("igmContainRef2") || "11",
+        containVeh: val("igmContainVeh") || val("igmVehicleNo"),
+        msgRefNo: msgRefNo
+      };
+    }
+
+    function populateIgmForm(data) {
+      document.getElementById("igmJobDate").value = data.jobDate || getTodayDate();
+      document.getElementById("igmPort").value = (data.port || "INJIGB").toUpperCase();
+      document.getElementById("igmPortOfOrigin").value = (data.portOfOrigin || "BTPHU").toUpperCase();
+      document.getElementById("igmVehicleNo").value = (data.vehicleNo || "").toUpperCase();
+      document.getElementById("igmArrTime").value = data.arrTime || getFormattedTimestampWithDefault();
+      
+      const comp = companiesMaster.find(c => c.id === data.companyId) || getActiveWorkingCompany();
+      document.getElementById("igmPermitNo").value = (comp.transitPermit || data.permitNo || "BJOPM0241HCH007").toUpperCase();
+      
+      document.getElementById("igmTransName").value = (data.transName || "SELF").toUpperCase();
+      document.getElementById("igmTransAddr1").value = (data.transAddr1 || ".").toUpperCase();
+      document.getElementById("igmTransAddr2").value = (data.transAddr2 || ".").toUpperCase();
+      document.getElementById("igmTransAddr3").value = (data.transAddr3 || ".").toUpperCase();
+      document.getElementById("igmTransCity").value = (data.transCity || ".").toUpperCase();
+      document.getElementById("igmTransCountry").value = (data.transCountry || "IN").toUpperCase();
+      document.getElementById("igmBillNo").value = (data.billNo || "").toUpperCase();
+      document.getElementById("igmBillDate").value = data.billDate || getTodayDate();
+      document.getElementById("igmImporterName").value = (data.importerName || "").toUpperCase();
+      document.getElementById("igmImporterIec").value = (data.importerIec || "").toUpperCase();
+      document.getElementById("igmNoOfPkgs").value = (data.noOfPkgs || "").toUpperCase();
+      document.getElementById("igmPkgUnit").value = (data.pkgUnit || "").toUpperCase();
+      document.getElementById("igmGrossQty").value = (data.grossQty || "").toUpperCase();
+      document.getElementById("igmWeightUnit").value = (data.weightUnit || "KGS").toUpperCase();
+      document.getElementById("igmMarksNos").value = (data.marksNos || "API").toUpperCase();
+      document.getElementById("igmDescription").value = (data.description || "").toUpperCase();
+      document.getElementById("igmContainRef1").value = (data.containRef1 || "11").toUpperCase();
+      document.getElementById("igmContainRef2").value = (data.containRef2 || "11").toUpperCase();
+      document.getElementById("igmContainVeh").value = (data.containVeh || data.vehicleNo || "").toUpperCase();
+    }
+
+    const igmJobInput = document.getElementById("igmJobNo");
+    const igmLineInput = document.getElementById("igmLineNo");
+    const igmBadge = document.getElementById("igmJobStatusBadge");
+
+    function handleIgmRealTimeSync() {
+      const enteredJob = igmJobInput.value.trim();
+      const enteredLine = igmLineInput.value.trim();
+      const activeCompany = getActiveWorkingCompany();
+
+      if (!enteredJob || !enteredLine) return;
+
+      const anyJobLine = globalDatabaseIgmJobs.find(item => item.companyId === activeCompany.id && String(item.jobNo) === String(enteredJob));
+      if (anyJobLine) {
+        igmBadge.textContent = "Existing Job";
+        igmBadge.className = "status-badge status-existing";
+      } else {
+        igmBadge.textContent = "New Entry";
+        igmBadge.className = "status-badge status-new";
+      }
+
+      const foundLine = globalDatabaseIgmJobs.find(
+        item => item.companyId === activeCompany.id && String(item.jobNo) === String(enteredJob) && String(item.lineNo) === String(enteredLine)
+      );
+
+      if (foundLine) {
+        populateIgmForm(foundLine);
+      } else {
+        document.getElementById("igmBillNo").value = "";
+        document.getElementById("igmVehicleNo").value = "";
+        document.getElementById("igmContainVeh").value = "";
+        document.getElementById("igmImporterName").value = "";
+        document.getElementById("igmImporterIec").value = "";
+        document.getElementById("igmNoOfPkgs").value = "";
+        document.getElementById("igmPkgUnit").value = "";
+        document.getElementById("igmGrossQty").value = "";
+        document.getElementById("igmDescription").value = "";
+        document.getElementById("igmArrTime").value = getFormattedTimestampWithDefault();
+      }
+    }
+
+    function enforceIgmSequentialJobRedirect() {
+      const enteredJobNum = parseInt(igmJobInput.value, 10);
+      if (!enteredJobNum || isNaN(enteredJobNum)) return;
+
+      const activeCompany = getActiveWorkingCompany();
+      const companyJobs = globalDatabaseIgmJobs.filter(j => j.companyId === activeCompany.id);
+      const occupiedJobs = [...new Set(companyJobs.map(j => parseInt(j.jobNo, 10) || 0))];
+
+      if (occupiedJobs.includes(enteredJobNum)) {
+        handleIgmRealTimeSync();
+        return;
+      }
+
+      const nextContinuousSeq = getNextSequentialJobNumber(true);
+
+      if (enteredJobNum > nextContinuousSeq) {
+        igmJobInput.value = nextContinuousSeq;
+        igmLineInput.value = 1;
+        showToast(`IGM Job #${enteredJobNum} redirected to next sequential Job #${nextContinuousSeq}`);
+        handleIgmRealTimeSync();
+      } else {
+        handleIgmRealTimeSync();
+      }
+    }
+
+    igmJobInput.addEventListener("input", handleIgmRealTimeSync);
+    igmJobInput.addEventListener("change", enforceIgmSequentialJobRedirect);
+    igmJobInput.addEventListener("blur", enforceIgmSequentialJobRedirect);
+
+    igmLineInput.addEventListener("input", handleIgmRealTimeSync);
+
+    document.getElementById("btnSaveIgm").addEventListener("click", () => {
+      const data = getIgmFormData();
+      if (!data.jobNo || !data.lineNo) {
+        showToast("Please provide valid IGM Job and Line Number.");
+        return;
+      }
+
+      const existingIdx = globalDatabaseIgmJobs.findIndex(
+        item => item.companyId === data.companyId && String(item.jobNo) === String(data.jobNo) && String(item.lineNo) === String(data.lineNo)
+      );
+
+      if (existingIdx > -1) {
+        globalDatabaseIgmJobs[existingIdx] = data;
+      } else {
+        globalDatabaseIgmJobs.push(data);
+      }
+
+      localStorage.setItem("BIKASH_IGM_DATABASE", JSON.stringify(globalDatabaseIgmJobs));
+      refreshScopeAndData();
+      showToast(`Saved IGM Job #${data.jobNo} Line ${data.lineNo}`);
+    });
+
+    window.editIgmLineById = function(companyId, jobNo, lineNo) {
+      const item = globalDatabaseIgmJobs.find(i => i.companyId === companyId && String(i.jobNo) === String(jobNo) && String(i.lineNo) === String(lineNo));
+      if (!item) return;
+
+      if (currentLoggedInUser && currentLoggedInUser.role === "ADMIN" && adminWorkingCompanyId !== companyId) {
+        handleAdminCompanySwitch(companyId);
+      }
+
+      igmJobInput.value = item.jobNo;
+      igmLineInput.value = item.lineNo;
+      handleIgmRealTimeSync();
+      showToast(`Loaded IGM Job #${item.jobNo} Line ${item.lineNo}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteIgmLineById = function(companyId, jobNo, lineNo) {
+      const idx = globalDatabaseIgmJobs.findIndex(i => i.companyId === companyId && String(i.jobNo) === String(jobNo) && String(i.lineNo) === String(lineNo));
+      if (idx === -1) return;
+      if (confirm(`Remove IGM Job #${jobNo} Line ${lineNo}?`)) {
+        globalDatabaseIgmJobs.splice(idx, 1);
+        localStorage.setItem("BIKASH_IGM_DATABASE", JSON.stringify(globalDatabaseIgmJobs));
+        refreshScopeAndData();
+        showToast(`Removed Line ${lineNo}`);
+      }
+    };
+
+    // PDF Exports
     document.getElementById("btnChecklistPDF").addEventListener("click", () => {
+      const currentJob = jobInput.value.trim();
+      const assignedComp = getActiveWorkingCompany();
+      const jobLines = globalDatabaseJobs.filter(item => item.companyId === assignedComp.id && String(item.jobNo) === String(currentJob));
+      const activeData = getEgmFormData();
+
+      if (jobLines.length === 0 && (!activeData.sbNo || !activeData.vehicleNo)) {
+        alert("Cannot generate Checklist for a blank job. Please fill details and save the line first.");
+        return;
+      }
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      
-      const currentJob = jobInput.value.trim();
-      const jobLines = masterJobList.filter(item => String(item.jobNo) === String(currentJob));
-      const activeData = getFormData();
       const modeTitle = activeData.shippingMode === "Multiple Shipping Mode" ? "MULTIPLE SHIPPING" : "MULTIPLE TRUCK";
 
       doc.setFont("Helvetica", "bold");
@@ -1215,7 +2008,7 @@
 
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(10);
-      doc.text(`EXPORT GENERAL MANIFEST (EGM) CHECKLIST - ${modeTitle}`, 105, 25, { align: "center" });
+      doc.text(`EXPORT GENERAL MANIFEST (EGM) CHECKLIST`, 105, 25, { align: "center" });
 
       doc.setLineWidth(0.3);
       doc.line(14, 28, 196, 28);
@@ -1225,102 +2018,111 @@
         theme: "plain",
         styles: { fontSize: 8.5, cellPadding: 1.5, textColor: [0, 0, 0] },
         body: [
-          [
-            `Job No: ${activeData.jobNo}`,
-            `Port of Loading: ${activeData.portOfLoading}`,
-            `Date: ${new Date().toLocaleDateString()}`
-          ],
-          [
-            `Job Date: ${activeData.jobDate}`,
-            `ICEGATE ID: ${activeData.icegateId}`,
-            `Mode: ${activeData.shippingMode}`
-          ],
-          [
-            `Transporter: ${activeData.transName}`,
-            `Owner: ${activeData.ownerName}`,
-            `Msg Ref: ${activeData.msgRefNo}`
-          ]
+          [`Job No: ${activeData.jobNo}`, `Port of Loading: ${activeData.portOfLoading}`, `Date: ${new Date().toLocaleDateString()}`],
+          [`Job Date: ${activeData.jobDate}`, `ICEGATE ID: ${activeData.icegateId}`, `Mode: ${activeData.shippingMode}`],
+          [`Transporter: ${activeData.transName}`, `Owner: ${activeData.ownerName}`, `Msg Ref: ${activeData.msgRefNo}`]
         ]
       });
 
       const tableData = jobLines.length > 0 
-        ? jobLines.map(line => [
-            line.siNo, 
-            line.vehicleNo || "—", 
-            line.sbNo || "—", 
-            line.sbDate || "—", 
-            line.lrNo || "NIL", 
-            `${line.quantity || "0"} ${line.unit || "KGS"}`, 
-            line.noOfPkgs || "0", 
-            line.description || "API"
-          ])
-        : [[
-            activeData.siNo, 
-            activeData.vehicleNo || "—", 
-            activeData.sbNo || "—", 
-            activeData.sbDate || "—", 
-            activeData.lrNo || "NIL", 
-            `${activeData.quantity || "0"} ${activeData.unit || "KGS"}`, 
-            activeData.noOfPkgs || "0", 
-            activeData.description || "API"
-          ]];
+        ? jobLines.map(line => [line.siNo, line.vehicleNo || "—", line.sbNo || "—", line.sbDate || "—", line.lrNo || "NIL", `${line.quantity || "0"} ${line.unit || "KGS"}`, line.noOfPkgs || "0", line.description || "API"])
+        : [[activeData.siNo, activeData.vehicleNo || "—", activeData.sbNo || "—", activeData.sbDate || "—", activeData.lrNo || "NIL", `${activeData.quantity || "0"} ${activeData.unit || "KGS"}`, activeData.noOfPkgs || "0", activeData.description || "API"]];
 
       doc.autoTable({
         startY: doc.lastAutoTable.finalY + 4,
         head: [["SI #", "Vehicle No", "SB No", "SB Date", "LR No", "Quantity", "Pkgs", "Description"]],
         body: tableData,
         theme: "grid",
-        headStyles: {
-          fillColor: [240, 240, 240],
-          textColor: [0, 0, 0],
-          fontStyle: "bold",
-          fontSize: 8.5,
-          lineWidth: 0.2
-        },
-        bodyStyles: {
-          fontSize: 8,
-          textColor: [0, 0, 0],
-          cellPadding: 2.5
-        },
-        columnStyles: {
-          0: { cellWidth: 12, halign: "center" },
-          1: { cellWidth: 26 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 18 },
-          5: { cellWidth: 26 },
-          6: { cellWidth: 16, halign: "center" },
-          7: { cellWidth: "auto" }
-        }
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 8.5, lineWidth: 0.2 },
+        bodyStyles: { fontSize: 8, textColor: [0, 0, 0], cellPadding: 2.5 }
       });
 
       let finalY = doc.lastAutoTable.finalY + 28;
-      if (finalY > 260) {
-        doc.addPage();
-        finalY = 30;
-      }
+      if (finalY > 260) { doc.addPage(); finalY = 30; }
+      doc.setFontSize(8.5); doc.setFont("Helvetica", "normal");
+      doc.line(14, finalY, 74, finalY); doc.text("Signature of Customs Broker / Agent", 14, finalY + 5);
+      doc.line(136, finalY, 196, finalY); doc.text("Signature of Customs Officer", 136, finalY + 5);
 
-      doc.setFontSize(8.5);
-      doc.setFont("Helvetica", "normal");
-      doc.line(14, finalY, 74, finalY);
-      doc.text("Signature of Customs Broker / Agent", 14, finalY + 5);
-
-      doc.line(136, finalY, 196, finalY);
-      doc.text("Signature of Customs Officer", 136, finalY + 5);
-
-      doc.save(`Checklist_Job_${currentJob}.pdf`);
-      showToast(`Downloaded Checklist PDF for Job #${currentJob}`);
+      doc.save(`EGM_Checklist_Job_${currentJob}.pdf`);
+      showToast(`Downloaded EGM Checklist PDF`);
     });
 
-    // ==========================================
-    // FLATFILE .EGM GENERATOR (USER'S ICEGATE ID)
-    // ==========================================
-    document.getElementById("btnGenerate").addEventListener("click", () => {
-      const currentJob = jobInput.value.trim();
-      const jobLines = masterJobList.filter(item => String(item.jobNo) === String(currentJob));
-      const currentData = getFormData();
-      const recordsToExport = jobLines.length > 0 ? jobLines : [currentData];
+    document.getElementById("btnIgmChecklistPDF").addEventListener("click", () => {
+      const currentJob = igmJobInput.value.trim();
+      const assignedComp = getActiveWorkingCompany();
+      const jobLines = globalDatabaseIgmJobs.filter(item => item.companyId === assignedComp.id && String(item.jobNo) === String(currentJob));
+      const activeData = getIgmFormData();
 
+      if (jobLines.length === 0 && (!activeData.billNo || !activeData.vehicleNo)) {
+        alert("Cannot generate IGM Checklist for a blank job. Please fill required fields and save first.");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(activeData.companyName.toUpperCase(), 105, 14, { align: "center" });
+
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(`BRANCH: ${activeData.branchName.toUpperCase()}`, 105, 19, { align: "center" });
+
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`IMPORT GENERAL MANIFEST (IGM) - LCS CHECKLIST`, 105, 25, { align: "center" });
+
+      doc.setLineWidth(0.3);
+      doc.line(14, 28, 196, 28);
+
+      doc.autoTable({
+        startY: 31,
+        theme: "plain",
+        styles: { fontSize: 8.5, cellPadding: 1.5, textColor: [0, 0, 0] },
+        body: [
+          [`IGM Job No: ${activeData.jobNo}`, `Port of Reporting: ${activeData.port}`, `Port of Origin: ${activeData.portOfOrigin}`],
+          [`Job Date: ${activeData.jobDate}`, `Vehicle No: ${activeData.vehicleNo}`, `Transit Permit: ${activeData.permitNo}`],
+          [`ICEGATE ID: ${activeData.icegateId}`, `Arrival: ${activeData.arrTime}`, `Msg Ref: ${activeData.msgRefNo}`]
+        ]
+      });
+
+      const tableData = jobLines.length > 0 
+        ? jobLines.map(line => [line.lineNo, line.billNo, line.billDate, line.importerName, line.importerIec, `${line.noOfPkgs} ${line.pkgUnit}`, `${line.grossQty} ${line.weightUnit}`, line.description])
+        : [[activeData.lineNo, activeData.billNo, activeData.billDate, activeData.importerName, activeData.importerIec, `${activeData.noOfPkgs} ${activeData.pkgUnit}`, `${activeData.grossQty} ${activeData.weightUnit}`, activeData.description]];
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 4,
+        head: [["Line #", "Bill No", "Bill Date", "Importer Name", "IEC", "Packages", "Weight", "Description"]],
+        body: tableData,
+        theme: "grid",
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 8.5, lineWidth: 0.2 },
+        bodyStyles: { fontSize: 8, textColor: [0, 0, 0], cellPadding: 2.5 }
+      });
+
+      let finalY = doc.lastAutoTable.finalY + 28;
+      if (finalY > 260) { doc.addPage(); finalY = 30; }
+      doc.setFontSize(8.5); doc.setFont("Helvetica", "normal");
+      doc.line(14, finalY, 74, finalY); doc.text("Signature of Customs Broker / Agent", 14, finalY + 5);
+      doc.line(136, finalY, 196, finalY); doc.text("Signature of Customs Officer", 136, finalY + 5);
+
+      doc.save(`IGM_Checklist_Job_${currentJob}.pdf`);
+      showToast(`Downloaded IGM Checklist PDF`);
+    });
+
+    // Flatfile Export
+    document.getElementById("btnGenerateEgm").addEventListener("click", () => {
+      const currentJob = jobInput.value.trim();
+      const assignedComp = getActiveWorkingCompany();
+      const jobLines = globalDatabaseJobs.filter(item => item.companyId === assignedComp.id && String(item.jobNo) === String(currentJob));
+      const currentData = getEgmFormData();
+
+      if (jobLines.length === 0 && (!currentData.sbNo || !currentData.vehicleNo)) {
+        alert("Cannot generate .egm file for a blank job. Please enter and save the consignment details first.");
+        return;
+      }
+
+      const recordsToExport = jobLines.length > 0 ? jobLines : [currentData];
       const now = new Date();
       const curDate = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
       const curTime = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
@@ -1331,7 +2133,7 @@
         "F",
         data.portOfLoading,
         data.jobNo,
-        data.jobDateFormatted,
+        formatDateStandard(data.jobDate),
         data.vehicleNo,
         (data.sbNo || "").slice(0, 7),
         formatDate(data.sbDate),
@@ -1369,7 +2171,74 @@
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
 
-      showToast(`Exported ${currentData.msgRefNo}.egm using ${currentData.icegateId}`);
+      showToast(`Exported ${currentData.msgRefNo}.egm`);
+    });
+
+    document.getElementById("btnGenerateIgm").addEventListener("click", () => {
+      const currentJob = igmJobInput.value.trim();
+      const assignedComp = getActiveWorkingCompany();
+      const jobLines = globalDatabaseIgmJobs.filter(item => item.companyId === assignedComp.id && String(item.jobNo) === String(currentJob));
+      const currentData = getIgmFormData();
+
+      if (jobLines.length === 0 && (!currentData.billNo || !currentData.vehicleNo)) {
+        alert("Cannot generate .igm file for a blank job. Please enter and save the consignment details first.");
+        return;
+      }
+
+      const recordsToExport = jobLines.length > 0 ? jobLines : [currentData];
+      const now = new Date();
+      const curDate = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const curTime = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+
+      const hrec = ["HREC", "ZZ", currentData.icegateId, "ZZ", currentData.port, "ICES1_5", "P", "", "LCCHI01", currentData.msgRefNo, curDate, curTime].join(GS);
+      const transRow = ["F", currentData.port, "", "", "T", currentData.vehicleNo, currentData.arrTime, currentData.portOfOrigin, currentData.port, currentData.permitNo, currentData.transName, currentData.transAddr1, currentData.transAddr2, currentData.transAddr3, currentData.transCity, currentData.transCountry, currentData.transName, currentData.transAddr1, currentData.transAddr2].join(GS);
+
+      const cargoRows = recordsToExport.map(data => [
+        "F",
+        data.port,
+        "",
+        "",
+        data.lineNo || "1",
+        data.billNo,
+        data.billDateFormatted,
+        data.portOfOrigin,
+        data.port,
+        data.importerName,
+        data.importerIec,
+        data.noOfPkgs,
+        data.pkgUnit,
+        data.grossQty,
+        data.weightUnit,
+        data.marksNos || "API",
+        data.description
+      ].join(GS)).join(EOR);
+
+      const containRows = recordsToExport.map(data => [
+        "F",
+        data.port,
+        "",
+        "",
+        data.lineNo || "1",
+        data.billNo,
+        data.billDateFormatted,
+        data.containRef1 || "11",
+        data.containVeh || data.vehicleNo,
+        data.containRef2 || "11"
+      ].join(GS)).join(EOR);
+
+      const trec = ["TREC", currentData.msgRefNo].join(GS);
+      const igmFlatFile = `${hrec}${EOR}<LCSINFO>${EOR}<TRANS>${EOR}${transRow}${EOR}<CARGO>${EOR}${cargoRows}${EOR}<CONTAIN>${EOR}${containRows}${EOR}<END-LCSINFO>${EOR}${trec}${EOR}`;
+
+      const blob = new Blob([igmFlatFile], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${currentData.msgRefNo}.igm`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast(`Exported ${currentData.msgRefNo}.igm`);
     });
 
     initSystemData();
